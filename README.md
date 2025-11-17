@@ -5,7 +5,8 @@ Automatically play Adhan (Islamic call to prayer) on your Google Nest Hub at sch
 ## Features
 
 - 🕌 Plays Adhan audio at exact prayer times
-- 📅 Reads prayer times from CSV file
+- 🎵 Different Adhan audio for each prayer (optional)
+- 📅 Reads prayer times from CSV file (supports English & Turkish formats)
 - 🔊 Casts audio to Google Nest Hub
 - ⏰ Automatic scheduling with daily refresh
 - 🇦🇹 Vienna timezone configured (customizable)
@@ -47,21 +48,39 @@ Edit `config/config.json`:
   "timezone": "Europe/Vienna",   // Your timezone
   "prayers": ["fajr", "dhuhr", "asr", "maghrib", "isha"],
   "csvFile": "prayer-times.csv",
-  "adhanAudioFile": "adhan.mp3"
+  "adhanAudioFile": "adhan.mp3",
+  "audioFiles": {
+    "fajr": "adhan-fajr.mp3",
+    "dhuhr": "adhan-dhuhr.mp3",
+    "asr": "adhan-asr.mp3",
+    "maghrib": "adhan-maghrib.mp3",
+    "isha": "adhan-isha.mp3"
+  }
 }
 ```
+
+**Note**: The `audioFiles` object is optional. If you want the same Adhan for all prayers, just use `adhanAudioFile`. If you want different Adhan for each prayer (e.g., special Fajr Adhan), configure `audioFiles`.
 
 ### 4. Add Your Files
 
 1. **Prayer Times CSV**: Copy your CSV file to `data/prayer-times.csv`
 
-   Format:
+   Format (English):
    ```csv
    Date,Fajr,Sunrise,Dhuhr,Asr,Maghrib,Isha
    2024-11-17,05:32,07:12,11:48,14:23,16:24,18:04
    ```
 
-2. **Adhan Audio**: Place your MP3 file in `audio/adhan.mp3`
+   Format (Turkish):
+   ```csv
+   Miladi Tarih,İmsak,Güneş,Öğle,İkindi,Akşam,Yatsı
+   01 Ocak 2025,05:51,07:38,12:03,13:57,16:18,17:52
+   ```
+
+2. **Adhan Audio**: Place your MP3 file(s) in the `audio/` directory
+
+   - Single file: `audio/adhan.mp3`
+   - Multiple files: `audio/adhan-fajr.mp3`, `audio/adhan-dhuhr.mp3`, etc.
 
    You can download Adhan audio from various Islamic websites.
 
@@ -73,7 +92,9 @@ npm start
 
 ## CSV File Format
 
-The CSV file should have the following columns:
+The system supports multiple CSV formats:
+
+### English Format
 
 - `Date` - Date in YYYY-MM-DD format (also supports DD/MM/YYYY, MM/DD/YYYY)
 - `Fajr` - Fajr prayer time (HH:MM)
@@ -90,6 +111,25 @@ Date,Fajr,Sunrise,Dhuhr,Asr,Maghrib,Isha
 2024-11-18,05:33,07:14,11:48,14:22,16:23,18:03
 ```
 
+### Turkish Format
+
+- `Miladi Tarih` - Date in "DD Month YYYY" format (e.g., "01 Ocak 2025")
+- `İmsak` - Fajr/Imsak time
+- `Güneş` - Sunrise time
+- `Öğle` - Dhuhr/Zuhr time
+- `İkindi` - Asr time
+- `Akşam` - Maghrib time
+- `Yatsı` - Isha time
+
+Example:
+```csv
+Miladi Tarih,İmsak,Güneş,Öğle,İkindi,Akşam,Yatsı
+01 Ocak 2025,05:51,07:38,12:03,13:57,16:18,17:52
+02 Ocak 2025,05:51,07:38,12:03,13:58,16:19,17:53
+```
+
+**Note**: The system auto-detects the format based on column names.
+
 ## Configuration Options
 
 | Option | Description | Default |
@@ -100,7 +140,8 @@ Date,Fajr,Sunrise,Dhuhr,Asr,Maghrib,Isha
 | `timezone` | Timezone for scheduling | "Europe/Vienna" |
 | `prayers` | Which prayers to announce | All five prayers |
 | `csvFile` | Name of CSV file in data/ folder | "prayer-times.csv" |
-| `adhanAudioFile` | Name of audio file in audio/ folder | "adhan.mp3" |
+| `adhanAudioFile` | Default audio file (fallback) | "adhan.mp3" |
+| `audioFiles` | Object mapping each prayer to its audio file | null (uses adhanAudioFile) |
 | `serverPort` | HTTP server port for audio streaming | 3000 |
 | `localIp` | Override local IP detection | Auto-detect |
 | `testConnection` | Test Cast connection on startup | false |
@@ -202,9 +243,14 @@ automatic-prayer-times/
 │   ├── csv-parser.js     # CSV prayer times reader
 │   └── server.js         # HTTP server for audio
 ├── audio/
-│   └── adhan.mp3         # Your Adhan audio file
+│   ├── adhan.mp3         # Default Adhan (or single file)
+│   ├── adhan-fajr.mp3    # Fajr-specific Adhan (optional)
+│   ├── adhan-dhuhr.mp3   # Dhuhr-specific Adhan (optional)
+│   ├── adhan-asr.mp3     # Asr-specific Adhan (optional)
+│   ├── adhan-maghrib.mp3 # Maghrib-specific Adhan (optional)
+│   └── adhan-isha.mp3    # Isha-specific Adhan (optional)
 ├── data/
-│   └── prayer-times.csv  # Your prayer times
+│   └── prayer-times.csv  # Your prayer times (Turkish or English)
 ├── config/
 │   └── config.json       # Configuration
 ├── package.json

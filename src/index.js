@@ -40,7 +40,17 @@ class AdhanPlayer {
     console.log(`  Volume: ${this.config.volume * 100}%`);
     console.log(`  Timezone: ${this.config.timezone}`);
     console.log(`  Prayers: ${this.config.prayers.join(', ')}`);
-    console.log(`  Audio file: ${this.config.adhanAudioFile}`);
+
+    // Show audio file configuration
+    if (this.config.audioFiles) {
+      console.log('  Audio files (per prayer):');
+      for (const prayer of this.config.prayers) {
+        const audioFile = this.config.audioFiles[prayer] || this.config.adhanAudioFile;
+        console.log(`    ${prayer}: ${audioFile}`);
+      }
+    } else {
+      console.log(`  Audio file: ${this.config.adhanAudioFile}`);
+    }
   }
 
   /**
@@ -75,12 +85,8 @@ class AdhanPlayer {
     });
     await this.server.start();
 
-    // Verify audio file exists
-    const audioFilePath = join(__dirname, '..', 'audio', this.config.adhanAudioFile);
-    if (!existsSync(audioFilePath)) {
-      console.warn(`⚠️  Warning: Audio file not found: ${audioFilePath}`);
-      console.warn('Please add your Adhan audio file (MP3) to the audio directory.');
-    }
+    // Verify audio files exist
+    this.verifyAudioFiles();
 
     // Initialize scheduler
     this.scheduler = new PrayerScheduler({
@@ -95,6 +101,49 @@ class AdhanPlayer {
     }
 
     console.log('\n✅ Initialization complete!\n');
+  }
+
+  /**
+   * Verify audio files exist
+   */
+  verifyAudioFiles() {
+    const audioDir = join(__dirname, '..', 'audio');
+    const missingFiles = [];
+
+    if (this.config.audioFiles) {
+      // Check prayer-specific audio files
+      for (const prayer of this.config.prayers) {
+        const audioFile = this.config.audioFiles[prayer] || this.config.adhanAudioFile;
+        const audioFilePath = join(audioDir, audioFile);
+        if (!existsSync(audioFilePath)) {
+          missingFiles.push(`${prayer}: ${audioFile}`);
+        }
+      }
+    } else {
+      // Check single audio file
+      const audioFilePath = join(audioDir, this.config.adhanAudioFile);
+      if (!existsSync(audioFilePath)) {
+        missingFiles.push(this.config.adhanAudioFile);
+      }
+    }
+
+    if (missingFiles.length > 0) {
+      console.warn('⚠️  Warning: Missing audio files:');
+      missingFiles.forEach((file) => console.warn(`    - ${file}`));
+      console.warn('Please add your Adhan audio files (MP3) to the audio directory.');
+    } else {
+      console.log('✅ All audio files found');
+    }
+  }
+
+  /**
+   * Get audio file for a specific prayer
+   */
+  getAudioFileForPrayer(prayer) {
+    if (this.config.audioFiles && this.config.audioFiles[prayer]) {
+      return this.config.audioFiles[prayer];
+    }
+    return this.config.adhanAudioFile;
   }
 
   /**
@@ -132,8 +181,10 @@ class AdhanPlayer {
         volume: this.config.volume,
       });
 
-      // Get audio URL
-      const audioUrl = this.server.getAudioUrl(this.config.adhanAudioFile);
+      // Get audio file for this specific prayer
+      const audioFile = this.getAudioFileForPrayer(prayer);
+      const audioUrl = this.server.getAudioUrl(audioFile);
+      console.log(`Audio file: ${audioFile}`);
       console.log(`Audio URL: ${audioUrl}`);
 
       // Play Adhan

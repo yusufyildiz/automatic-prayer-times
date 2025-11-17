@@ -7,10 +7,32 @@ dayjs.extend(customParseFormat);
 
 /**
  * Parse CSV file containing prayer times
- * Expected CSV format:
+ * Supports multiple formats:
+ *
+ * English format:
  * Date,Fajr,Sunrise,Dhuhr,Asr,Maghrib,Isha
  * 2024-11-17,05:32,07:12,11:48,14:23,16:24,18:04
+ *
+ * Turkish format:
+ * Miladi Tarih,İmsak,Güneş,Öğle,İkindi,Akşam,Yatsı
+ * 01 Ocak 2025,05:51,07:38,12:03,13:57,16:18,17:52
  */
+
+// Turkish month names mapping
+const TURKISH_MONTHS = {
+  'ocak': 0,
+  'şubat': 1,
+  'mart': 2,
+  'nisan': 3,
+  'mayıs': 4,
+  'haziran': 5,
+  'temmuz': 6,
+  'ağustos': 7,
+  'eylül': 8,
+  'ekim': 9,
+  'kasım': 10,
+  'aralık': 11,
+};
 
 export class PrayerTimesParser {
   constructor(csvFilePath) {
@@ -53,17 +75,26 @@ export class PrayerTimesParser {
   processRecords(records) {
     for (const record of records) {
       // Normalize date format - try multiple formats
-      let dateKey = record.Date || record.date;
+      // Support: Date, date, Miladi Tarih (Turkish)
+      let dateKey = record.Date || record.date || record['Miladi Tarih'];
 
       if (!dateKey) {
         console.warn('Record missing date field:', record);
         continue;
       }
 
-      // Try to parse the date and normalize to YYYY-MM-DD format
-      const parsedDate = dayjs(dateKey, ['YYYY-MM-DD', 'DD/MM/YYYY', 'MM/DD/YYYY', 'DD.MM.YYYY'], true);
+      // Clean up the date string
+      dateKey = dateKey.trim();
 
+      // Try to parse the date and normalize to YYYY-MM-DD format
+      let parsedDate = dayjs(dateKey, ['YYYY-MM-DD', 'DD/MM/YYYY', 'MM/DD/YYYY', 'DD.MM.YYYY'], true);
+
+      // If standard parsing fails, try Turkish date format (e.g., "01 Ocak 2025")
       if (!parsedDate.isValid()) {
+        parsedDate = this.parseTurkishDate(dateKey);
+      }
+
+      if (!parsedDate || !parsedDate.isValid()) {
         console.warn(`Invalid date format: ${dateKey}`);
         continue;
       }
@@ -71,13 +102,14 @@ export class PrayerTimesParser {
       dateKey = parsedDate.format('YYYY-MM-DD');
 
       // Extract prayer times (handle different column name variations)
+      // Support both English and Turkish column names
       const prayerTimes = {
-        fajr: record.Fajr || record.fajr || null,
-        sunrise: record.Sunrise || record.sunrise || null,
-        dhuhr: record.Dhuhr || record.dhuhr || record.Zuhr || record.zuhr || null,
-        asr: record.Asr || record.asr || null,
-        maghrib: record.Maghrib || record.maghrib || null,
-        isha: record.Isha || record.isha || null,
+        fajr: record.Fajr || record.fajr || record['İmsak'] || record.Imsak || null,
+        sunrise: record.Sunrise || record.sunrise || record['Güneş'] || record.Gunes || null,
+        dhuhr: record.Dhuhr || record.dhuhr || record.Zuhr || record.zuhr || record['Öğle'] || record.Ogle || null,
+        asr: record.Asr || record.asr || record['İkindi'] || record.Ikindi || null,
+        maghrib: record.Maghrib || record.maghrib || record['Akşam'] || record.Aksam || null,
+        isha: record.Isha || record.isha || record['Yatsı'] || record.Yatsi || null,
       };
 
       // Validate and normalize time formats
@@ -89,6 +121,29 @@ export class PrayerTimesParser {
 
       this.prayerTimesMap.set(dateKey, prayerTimes);
     }
+  }
+
+  /**
+   * Parse Turkish date format (e.g., "01 Ocak 2025")
+   */
+  parseTurkishDate(dateStr) {
+    const parts = dateStr.trim().split(/\s+/);
+
+    if (parts.length !== 3) {
+      return null;
+    }
+
+    const day = parseInt(parts[0], 10);
+    const monthName = parts[1].toLowerCase();
+    const year = parseInt(parts[2], 10);
+
+    const month = TURKISH_MONTHS[monthName];
+
+    if (isNaN(day) || month === undefined || isNaN(year)) {
+      return null;
+    }
+
+    return dayjs(new Date(year, month, day));
   }
 
   /**

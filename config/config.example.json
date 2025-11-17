@@ -6,6 +6,13 @@
   "prayers": ["fajr", "dhuhr", "asr", "maghrib", "isha"],
   "csvFile": "prayer-times.csv",
   "adhanAudioFile": "adhan.mp3",
+  "audioFiles": {
+    "fajr": "adhan-fajr.mp3",
+    "dhuhr": "adhan-dhuhr.mp3",
+    "asr": "adhan-asr.mp3",
+    "maghrib": "adhan-maghrib.mp3",
+    "isha": "adhan-isha.mp3"
+  },
   "serverPort": 3000,
   "localIp": null,
   "testConnection": false
