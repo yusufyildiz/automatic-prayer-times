@@ -1,0 +1,12 @@
+{
+  "deviceIp": "192.168.1.100",
+  "deviceName": "Google Nest Hub",
+  "volume": 0.7,
+  "timezone": "Europe/Vienna",
+  "prayers": ["fajr", "dhuhr", "asr", "maghrib", "isha"],
+  "csvFile": "prayer-times.csv",
+  "adhanAudioFile": "adhan.mp3",
+  "serverPort": 3000,
+  "localIp": null,
+  "testConnection": false
+}

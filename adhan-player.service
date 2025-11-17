@@ -1,0 +1,25 @@
+[Unit]
+Description=Automatic Prayer Times - Adhan Player
+After=network.target
+
+[Service]
+Type=simple
+User=pi
+WorkingDirectory=/home/pi/automatic-prayer-times
+ExecStart=/usr/bin/node src/index.js
+Restart=on-failure
+RestartSec=10
+StandardOutput=journal
+StandardError=journal
+
+# Environment
+Environment=NODE_ENV=production
+
+# Security hardening (optional)
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=read-only
+ReadWritePaths=/home/pi/automatic-prayer-times
+
+[Install]
+WantedBy=multi-user.target

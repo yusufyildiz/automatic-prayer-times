@@ -1,0 +1,284 @@
+import { PrayerTimesParser } from './csv-parser.js';
+import { AudioServer } from './server.js';
+import { GoogleCastPlayer, discoverDevices } from './cast.js';
+import { PrayerScheduler } from './scheduler.js';
+import { readFileSync, existsSync } from 'fs';
+import { join, dirname } from 'path';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+
+/**
+ * Main application entry point
+ */
+class AdhanPlayer {
+  constructor() {
+    this.config = null;
+    this.parser = null;
+    this.server = null;
+    this.scheduler = null;
+    this.castPlayer = null;
+    this.isRunning = false;
+  }
+
+  /**
+   * Load configuration
+   */
+  loadConfig() {
+    const configPath = join(__dirname, '..', 'config', 'config.json');
+
+    if (!existsSync(configPath)) {
+      throw new Error(`Configuration file not found: ${configPath}`);
+    }
+
+    const configData = readFileSync(configPath, 'utf-8');
+    this.config = JSON.parse(configData);
+
+    console.log('Configuration loaded:');
+    console.log(`  Device IP: ${this.config.deviceIp}`);
+    console.log(`  Volume: ${this.config.volume * 100}%`);
+    console.log(`  Timezone: ${this.config.timezone}`);
+    console.log(`  Prayers: ${this.config.prayers.join(', ')}`);
+    console.log(`  Audio file: ${this.config.adhanAudioFile}`);
+  }
+
+  /**
+   * Initialize all components
+   */
+  async initialize() {
+    console.log('\n🕌 Initializing Adhan Player...\n');
+
+    // Load configuration
+    this.loadConfig();
+
+    // Initialize CSV parser
+    const csvPath = join(__dirname, '..', 'data', this.config.csvFile || 'prayer-times.csv');
+    if (!existsSync(csvPath)) {
+      throw new Error(`CSV file not found: ${csvPath}. Please add your prayer times CSV file.`);
+    }
+
+    this.parser = new PrayerTimesParser(csvPath);
+    await this.parser.load();
+
+    // Check if today's data is available
+    if (!this.parser.getTodaysPrayerTimes()) {
+      console.warn('⚠️  Warning: No prayer times found for today!');
+      console.warn('Available dates:', this.parser.getAvailableDates().slice(0, 5).join(', '), '...');
+    }
+
+    // Initialize HTTP server
+    this.server = new AudioServer({
+      port: this.config.serverPort || 3000,
+      audioDir: join(__dirname, '..', 'audio'),
+      localIp: this.config.localIp,
+    });
+    await this.server.start();
+
+    // Verify audio file exists
+    const audioFilePath = join(__dirname, '..', 'audio', this.config.adhanAudioFile);
+    if (!existsSync(audioFilePath)) {
+      console.warn(`⚠️  Warning: Audio file not found: ${audioFilePath}`);
+      console.warn('Please add your Adhan audio file (MP3) to the audio directory.');
+    }
+
+    // Initialize scheduler
+    this.scheduler = new PrayerScheduler({
+      timezone: this.config.timezone,
+      prayers: this.config.prayers,
+      onPrayerTime: (prayer, time) => this.onPrayerTime(prayer, time),
+    });
+
+    // Test connection to Cast device (optional)
+    if (this.config.testConnection) {
+      await this.testCastConnection();
+    }
+
+    console.log('\n✅ Initialization complete!\n');
+  }
+
+  /**
+   * Test connection to Google Cast device
+   */
+  async testCastConnection() {
+    console.log('Testing connection to Google Cast device...');
+    try {
+      const player = new GoogleCastPlayer({
+        deviceIp: this.config.deviceIp,
+        volume: this.config.volume,
+      });
+      await player.connect();
+      player.cleanup();
+      console.log('✅ Successfully connected to Cast device');
+    } catch (error) {
+      console.error('❌ Failed to connect to Cast device:', error.message);
+      console.log('Make sure:');
+      console.log('  1. The device IP is correct');
+      console.log('  2. Your computer and Nest Hub are on the same network');
+      console.log('  3. The Nest Hub is powered on');
+    }
+  }
+
+  /**
+   * Handle prayer time event
+   */
+  async onPrayerTime(prayer, time) {
+    console.log(`\n🕌 Time for ${prayer} prayer (${time})`);
+
+    try {
+      // Create new cast player instance for this playback
+      this.castPlayer = new GoogleCastPlayer({
+        deviceIp: this.config.deviceIp,
+        volume: this.config.volume,
+      });
+
+      // Get audio URL
+      const audioUrl = this.server.getAudioUrl(this.config.adhanAudioFile);
+      console.log(`Audio URL: ${audioUrl}`);
+
+      // Play Adhan
+      await this.castPlayer.playAdhan(audioUrl, this.capitalizeFirst(prayer));
+
+      console.log(`✅ Adhan playback completed for ${prayer}`);
+    } catch (error) {
+      console.error(`❌ Error playing Adhan for ${prayer}:`, error.message);
+    } finally {
+      if (this.castPlayer) {
+        this.castPlayer.cleanup();
+        this.castPlayer = null;
+      }
+    }
+  }
+
+  /**
+   * Capitalize first letter
+   */
+  capitalizeFirst(str) {
+    return str.charAt(0).toUpperCase() + str.slice(1);
+  }
+
+  /**
+   * Schedule today's prayers
+   */
+  scheduleTodaysPrayers() {
+    const todaysTimes = this.parser.getTodaysPrayerTimes();
+
+    if (!todaysTimes) {
+      console.error('No prayer times available for today');
+      return;
+    }
+
+    this.scheduler.scheduleTodaysPrayers(todaysTimes);
+
+    // Show next prayer
+    const nextPrayer = this.scheduler.getNextPrayer();
+    if (nextPrayer) {
+      console.log(`\n⏭️  Next prayer: ${this.capitalizeFirst(nextPrayer.prayer)} at ${nextPrayer.time} (in ${nextPrayer.minutesUntil} minutes)`);
+    } else {
+      console.log('\nNo more prayers scheduled for today');
+    }
+  }
+
+  /**
+   * Start the application
+   */
+  async start() {
+    try {
+      await this.initialize();
+
+      // Schedule today's prayers
+      this.scheduleTodaysPrayers();
+
+      // Schedule midnight refresh
+      this.scheduler.scheduleMidnightRefresh(() => {
+        this.scheduleTodaysPrayers();
+      });
+
+      this.isRunning = true;
+
+      console.log('\n🚀 Adhan Player is running!');
+      console.log('Press Ctrl+C to stop.\n');
+
+      // Handle graceful shutdown
+      process.on('SIGINT', () => this.stop());
+      process.on('SIGTERM', () => this.stop());
+
+      // Keep the process running
+      await this.keepAlive();
+    } catch (error) {
+      console.error('Failed to start Adhan Player:', error.message);
+      process.exit(1);
+    }
+  }
+
+  /**
+   * Keep the application running
+   */
+  async keepAlive() {
+    return new Promise((resolve) => {
+      const interval = setInterval(() => {
+        if (!this.isRunning) {
+          clearInterval(interval);
+          resolve();
+        }
+      }, 1000);
+    });
+  }
+
+  /**
+   * Stop the application
+   */
+  async stop() {
+    console.log('\n\nStopping Adhan Player...');
+
+    this.isRunning = false;
+
+    if (this.scheduler) {
+      this.scheduler.stop();
+    }
+
+    if (this.server) {
+      await this.server.stop();
+    }
+
+    if (this.castPlayer) {
+      this.castPlayer.cleanup();
+    }
+
+    console.log('Goodbye! 👋');
+    process.exit(0);
+  }
+}
+
+/**
+ * CLI Helper: Discover Cast devices
+ */
+async function discoverCastDevices() {
+  console.log('🔍 Discovering Google Cast devices on your network...\n');
+  const devices = await discoverDevices(10000);
+
+  if (devices.length === 0) {
+    console.log('No devices found. Make sure:');
+    console.log('  1. Your computer is on the same network as your Cast devices');
+    console.log('  2. mDNS/Bonjour is not blocked by your firewall');
+  } else {
+    console.log('\nFound devices:');
+    devices.forEach((device, index) => {
+      console.log(`  ${index + 1}. ${device.name}`);
+      console.log(`     IP: ${device.ip}`);
+    });
+  }
+}
+
+// Main execution
+const args = process.argv.slice(2);
+
+if (args.includes('--discover')) {
+  discoverCastDevices().catch(console.error);
+} else {
+  const app = new AdhanPlayer();
+  app.start().catch((error) => {
+    console.error('Fatal error:', error);
+    process.exit(1);
+  });
+}

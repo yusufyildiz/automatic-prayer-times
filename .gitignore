@@ -1,0 +1,32 @@
+# Dependencies
+node_modules/
+
+# Audio files (too large for git)
+audio/*.mp3
+audio/*.wav
+audio/*.ogg
+
+# User data (may contain personal information)
+data/prayer-times.csv
+
+# Config with personal settings
+config/config.json
+
+# Logs
+*.log
+npm-debug.log*
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Runtime
+*.pid
+*.seed
+*.pid.lock
