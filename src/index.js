@@ -2,7 +2,8 @@ import { PrayerTimesParser } from './csv-parser.js';
 import { AudioServer } from './server.js';
 import { GoogleCastPlayer, discoverDevices } from './cast.js';
 import { PrayerScheduler } from './scheduler.js';
-import { readFileSync, existsSync } from 'fs';
+import { registerApiRoutes } from './api-routes.js';
+import { readFileSync, writeFileSync, existsSync } from 'fs';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
 
@@ -20,6 +21,27 @@ class AdhanPlayer {
     this.scheduler = null;
     this.castPlayer = null;
     this.isRunning = false;
+    this.rootDir = join(__dirname, '..');
+    this.logBuffer = [];
+    this.maxLogLines = 200;
+
+    // Intercept console.log/warn/error to capture logs
+    const originalLog = console.log;
+    const originalWarn = console.warn;
+    const originalError = console.error;
+    const self = this;
+
+    const addLog = (level, args) => {
+      const message = args.map(a => typeof a === 'string' ? a : JSON.stringify(a)).join(' ');
+      self.logBuffer.push({ timestamp: new Date().toISOString(), level, message });
+      if (self.logBuffer.length > self.maxLogLines) {
+        self.logBuffer.shift();
+      }
+    };
+
+    console.log = (...args) => { addLog('info', args); originalLog.apply(console, args); };
+    console.warn = (...args) => { addLog('warn', args); originalWarn.apply(console, args); };
+    console.error = (...args) => { addLog('error', args); originalError.apply(console, args); };
   }
 
   /**
@@ -99,6 +121,9 @@ class AdhanPlayer {
     if (this.config.testConnection) {
       await this.testCastConnection();
     }
+
+    // Register API routes for web dashboard
+    registerApiRoutes(this.server.app, this);
 
     console.log('\n✅ Initialization complete!\n');
   }
@@ -199,6 +224,61 @@ class AdhanPlayer {
         this.castPlayer = null;
       }
     }
+  }
+
+  /**
+   * Reload configuration and re-initialize components
+   */
+  async reloadConfig(newConfig) {
+    const configPath = join(__dirname, '..', 'config', 'config.json');
+    if (newConfig) {
+      writeFileSync(configPath, JSON.stringify(newConfig, null, 2), 'utf-8');
+    }
+    this.loadConfig();
+
+    // Reload CSV parser if csvFile changed
+    const csvPath = join(__dirname, '..', 'data', this.config.csvFile || 'prayer-times.csv');
+    if (existsSync(csvPath)) {
+      await this.parser.reload(csvPath);
+    }
+
+    // Re-initialize scheduler with new config
+    if (this.scheduler) {
+      this.scheduler.stop();
+    }
+    this.scheduler = new PrayerScheduler({
+      timezone: this.config.timezone,
+      prayers: this.config.prayers,
+      onPrayerTime: (prayer, time) => this.onPrayerTime(prayer, time),
+    });
+
+    this.scheduleTodaysPrayers();
+    this.scheduler.scheduleMidnightRefresh(() => {
+      this.scheduleTodaysPrayers();
+    });
+  }
+
+  /**
+   * Get aggregated system status
+   */
+  getStatus() {
+    const todaysTimes = this.parser ? this.parser.getTodaysPrayerTimes() : null;
+    const nextPrayer = this.scheduler ? this.scheduler.getNextPrayer() : null;
+    const schedulerStatus = this.scheduler ? this.scheduler.getStatus() : null;
+
+    return {
+      isRunning: this.isRunning,
+      config: this.config,
+      todaysPrayerTimes: todaysTimes,
+      nextPrayer,
+      schedulerStatus,
+      serverUrl: this.server ? this.server.getServerUrl() : null,
+      availableDates: this.parser ? {
+        total: this.parser.getAvailableDates().length,
+        first: this.parser.getAvailableDates()[0],
+        last: this.parser.getAvailableDates().slice(-1)[0],
+      } : null,
+    };
   }
 
   /**

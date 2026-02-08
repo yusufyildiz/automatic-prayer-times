@@ -209,4 +209,16 @@ export class PrayerTimesParser {
     const dateKey = dayjs(date).format('YYYY-MM-DD');
     return this.prayerTimesMap.has(dateKey);
   }
+
+  /**
+   * Reload CSV data (optionally with a new file path)
+   */
+  async reload(newCsvFilePath) {
+    if (newCsvFilePath) {
+      this.csvFilePath = newCsvFilePath;
+    }
+    this.prayerTimesMap.clear();
+    this.loaded = false;
+    await this.load();
+  }
 }

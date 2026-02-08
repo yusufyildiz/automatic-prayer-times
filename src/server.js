@@ -1,7 +1,8 @@
 import express from 'express';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
-import { existsSync } from 'fs';
+import { existsSync, mkdirSync, readdirSync } from 'fs';
+import { networkInterfaces } from 'os';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -25,7 +26,6 @@ export class AudioServer {
    * Get local IP address
    */
   getLocalIp() {
-    const { networkInterfaces } = require('os');
     const nets = networkInterfaces();
 
     for (const name of Object.keys(nets)) {
@@ -44,6 +44,12 @@ export class AudioServer {
    * Setup Express routes
    */
   setupRoutes() {
+    // JSON body parser
+    this.app.use(express.json());
+
+    // Serve dashboard static files
+    this.app.use(express.static(join(__dirname, '..', 'public')));
+
     // Serve static audio files
     this.app.use('/audio', express.static(this.audioDir, {
       setHeaders: (res) => {
@@ -63,7 +69,6 @@ export class AudioServer {
 
     // List available audio files
     this.app.get('/audio-list', (req, res) => {
-      const { readdirSync } = require('fs');
       try {
         const files = readdirSync(this.audioDir).filter(
           (file) => file.endsWith('.mp3') || file.endsWith('.wav') || file.endsWith('.ogg')
@@ -90,7 +95,6 @@ export class AudioServer {
       if (!existsSync(this.audioDir)) {
         console.warn(`Audio directory does not exist: ${this.audioDir}`);
         console.warn('Creating audio directory...');
-        const { mkdirSync } = require('fs');
         mkdirSync(this.audioDir, { recursive: true });
       }
 
