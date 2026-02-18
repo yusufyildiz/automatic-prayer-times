@@ -3,74 +3,77 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Ezan Vakitleri - Yonetim Paneli</title>
+  <title>Ezan Vakitleri</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600;700&family=Karla:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
   <header>
-    <h1>Ezan Vakitleri</h1>
-    <p class="subtitle">Yonetim Paneli</p>
+    <div class="header-inner">
+      <svg class="header-icon" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+        <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" opacity="0.9"/>
+      </svg>
+      <div>
+        <h1>Ezan Vakitleri</h1>
+        <p class="subtitle">Yonetim Paneli</p>
+      </div>
+    </div>
   </header>
 
   <nav>
     <button class="tab-btn active" data-tab="home">Anasayfa</button>
     <button class="tab-btn" data-tab="settings">Ayarlar</button>
-    <button class="tab-btn" data-tab="audio">Ses Dosyalari</button>
-    <button class="tab-btn" data-tab="csv">CSV Dosyalari</button>
+    <button class="tab-btn" data-tab="audio">Ses</button>
+    <button class="tab-btn" data-tab="csv">Data</button>
     <button class="tab-btn" data-tab="logs">Kayitlar</button>
   </nav>
 
   <main>
     <!-- HOME TAB -->
     <section id="tab-home" class="tab-content active">
-      <div class="card">
+      <div class="card card-reveal" style="--reveal-delay: 0s">
         <h2>Sistem Durumu</h2>
-        <div id="system-status" class="status-grid">
+        <div class="status-grid">
           <div class="status-item">
             <span class="label">Durum</span>
             <span id="status-running" class="value">--</span>
           </div>
           <div class="status-item">
-            <span class="label">Cihaz IP</span>
+            <span class="label">Sistem</span>
+            <label class="toggle-switch">
+              <input type="checkbox" id="system-toggle" checked>
+              <span class="toggle-slider"></span>
+            </label>
+          </div>
+          <div class="status-item">
+            <span class="label">Hoparlor IP</span>
             <span id="status-device-ip" class="value">--</span>
           </div>
           <div class="status-item">
             <span class="label">Saat Dilimi</span>
             <span id="status-timezone" class="value">--</span>
           </div>
-          <div class="status-item">
-            <span class="label">Server URL</span>
-            <span id="status-server-url" class="value">--</span>
-          </div>
         </div>
       </div>
 
-      <div class="card highlight">
-        <h2>Sonraki Namaz</h2>
-        <div id="next-prayer-info" class="next-prayer">
+      <div class="card card-hero card-reveal" style="--reveal-delay: 0.1s">
+        <div class="next-prayer">
+          <div class="prayer-label">Sonraki Namaz</div>
           <div class="prayer-name" id="next-prayer-name">--</div>
           <div class="countdown" id="next-prayer-countdown">--:--:--</div>
           <div class="prayer-time" id="next-prayer-time">--</div>
         </div>
       </div>
 
-      <div class="card">
+      <div class="card card-reveal" style="--reveal-delay: 0.2s">
         <h2>Bugunun Vakitleri</h2>
         <div id="today-date" class="date-label"></div>
-        <table id="today-times-table">
-          <thead>
-            <tr>
-              <th>Vakit</th>
-              <th>Saat</th>
-              <th>Durum</th>
-            </tr>
-          </thead>
-          <tbody id="today-times-body">
-          </tbody>
-        </table>
+        <div id="today-times-body" class="prayer-grid"></div>
       </div>
 
-      <div class="card">
+      <div class="card card-reveal" style="--reveal-delay: 0.3s">
         <div class="card-actions">
           <button id="btn-reschedule" class="btn">Yeniden Planla</button>
           <button id="btn-test-cast" class="btn btn-secondary">Cihaz Testi</button>
@@ -85,7 +88,7 @@
         <h2>Konfigürasyon</h2>
         <form id="config-form">
           <div class="form-group">
-            <label for="cfg-deviceIp">Cihaz IP Adresi</label>
+            <label for="cfg-deviceIp">Hoparlor IP Adresi</label>
             <input type="text" id="cfg-deviceIp" placeholder="192.168.1.100">
           </div>
           <div class="form-group">
@@ -93,7 +96,7 @@
             <input type="text" id="cfg-deviceName" placeholder="Google Nest Hub">
           </div>
           <div class="form-group">
-            <label for="cfg-volume">Ses Seviyesi: <span id="volume-display">70%</span></label>
+            <label for="cfg-volume">Varsayilan Ses Seviyesi: <span id="volume-display">70%</span></label>
             <input type="range" id="cfg-volume" min="0" max="100" value="70">
           </div>
           <div class="form-group">
@@ -108,41 +111,43 @@
             <label for="cfg-localIp">Lokal IP (bos birakilabilir)</label>
             <input type="text" id="cfg-localIp" placeholder="Otomatik">
           </div>
+
           <div class="form-group">
             <label>Aktif Namazlar</label>
             <div class="checkbox-group" id="prayer-checkboxes">
-              <label><input type="checkbox" value="fajr" checked> Fajr (Imsak)</label>
-              <label><input type="checkbox" value="dhuhr" checked> Dhuhr (Ogle)</label>
-              <label><input type="checkbox" value="asr" checked> Asr (Ikindi)</label>
-              <label><input type="checkbox" value="maghrib" checked> Maghrib (Aksam)</label>
-              <label><input type="checkbox" value="isha" checked> Isha (Yatsi)</label>
+              <label><input type="checkbox" value="fajr" checked> Sabah</label>
+              <label><input type="checkbox" value="dhuhr" checked> Ogle</label>
+              <label><input type="checkbox" value="asr" checked> Ikindi</label>
+              <label><input type="checkbox" value="maghrib" checked> Aksam</label>
+              <label><input type="checkbox" value="isha" checked> Yatsi</label>
             </div>
           </div>
+
           <div class="form-group">
             <label for="cfg-adhanAudioFile">Varsayilan Ses Dosyasi</label>
-            <select id="cfg-adhanAudioFile"><option value="">Yukle...</option></select>
+            <select id="cfg-adhanAudioFile"><option value="">-- Sec --</option></select>
           </div>
 
           <fieldset>
             <legend>Namaz Bazinda Ses Seviyesi</legend>
             <div class="form-group">
-              <label for="cfg-vol-fajr">Fajr (Imsak): <span id="vol-display-fajr">--</span></label>
+              <label for="cfg-vol-fajr">Sabah <span id="vol-display-fajr">--</span></label>
               <input type="range" id="cfg-vol-fajr" min="0" max="100" value="50">
             </div>
             <div class="form-group">
-              <label for="cfg-vol-dhuhr">Dhuhr (Ogle): <span id="vol-display-dhuhr">--</span></label>
+              <label for="cfg-vol-dhuhr">Ogle <span id="vol-display-dhuhr">--</span></label>
               <input type="range" id="cfg-vol-dhuhr" min="0" max="100" value="50">
             </div>
             <div class="form-group">
-              <label for="cfg-vol-asr">Asr (Ikindi): <span id="vol-display-asr">--</span></label>
+              <label for="cfg-vol-asr">Ikindi <span id="vol-display-asr">--</span></label>
               <input type="range" id="cfg-vol-asr" min="0" max="100" value="50">
             </div>
             <div class="form-group">
-              <label for="cfg-vol-maghrib">Maghrib (Aksam): <span id="vol-display-maghrib">--</span></label>
+              <label for="cfg-vol-maghrib">Aksam <span id="vol-display-maghrib">--</span></label>
               <input type="range" id="cfg-vol-maghrib" min="0" max="100" value="50">
             </div>
             <div class="form-group">
-              <label for="cfg-vol-isha">Isha (Yatsi): <span id="vol-display-isha">--</span></label>
+              <label for="cfg-vol-isha">Yatsi <span id="vol-display-isha">--</span></label>
               <input type="range" id="cfg-vol-isha" min="0" max="100" value="50">
             </div>
           </fieldset>
@@ -150,23 +155,23 @@
           <fieldset>
             <legend>Namaz Bazinda Ses Dosyalari</legend>
             <div class="form-group">
-              <label for="cfg-audio-fajr">Fajr</label>
+              <label for="cfg-audio-fajr">Sabah</label>
               <select id="cfg-audio-fajr"><option value="">Varsayilan</option></select>
             </div>
             <div class="form-group">
-              <label for="cfg-audio-dhuhr">Dhuhr</label>
+              <label for="cfg-audio-dhuhr">Ogle</label>
               <select id="cfg-audio-dhuhr"><option value="">Varsayilan</option></select>
             </div>
             <div class="form-group">
-              <label for="cfg-audio-asr">Asr</label>
+              <label for="cfg-audio-asr">Ikindi</label>
               <select id="cfg-audio-asr"><option value="">Varsayilan</option></select>
             </div>
             <div class="form-group">
-              <label for="cfg-audio-maghrib">Maghrib</label>
+              <label for="cfg-audio-maghrib">Aksam</label>
               <select id="cfg-audio-maghrib"><option value="">Varsayilan</option></select>
             </div>
             <div class="form-group">
-              <label for="cfg-audio-isha">Isha</label>
+              <label for="cfg-audio-isha">Yatsi</label>
               <select id="cfg-audio-isha"><option value="">Varsayilan</option></select>
             </div>
           </fieldset>
@@ -191,7 +196,7 @@
           <span class="upload-hint">MP3, WAV, OGG (max 50MB)</span>
         </div>
         <div id="audio-upload-status" class="upload-status"></div>
-        <table id="audio-files-table">
+        <table>
           <thead>
             <tr>
               <th>Dosya Adi</th>
@@ -205,17 +210,34 @@
       </div>
     </section>
 
-    <!-- CSV TAB -->
+    <!-- DATA TAB -->
     <section id="tab-csv" class="tab-content">
       <div class="card">
-        <h2>CSV Dosyalari</h2>
+        <h2>Diyanet API Ayarlari</h2>
+        <div class="form-group">
+          <label for="cfg-diyanetLocationId">Konum ID (Diyanet)</label>
+          <input type="number" id="cfg-diyanetLocationId" placeholder="11618">
+        </div>
+        <div class="form-group">
+          <label for="cfg-data-timezone">Saat Dilimi</label>
+          <input type="text" id="cfg-data-timezone" placeholder="Europe/Vienna">
+        </div>
+        <div class="card-actions">
+          <button id="btn-save-api-settings" class="btn btn-small">Kaydet</button>
+          <button id="btn-fetch-api" class="btn btn-small btn-secondary">Vakitleri Cek</button>
+        </div>
+        <div id="api-settings-status" class="action-result"></div>
+      </div>
+
+      <div class="card">
+        <h2>Vakit Dosyalari</h2>
         <div class="upload-area">
           <input type="file" id="csv-file-input" accept=".csv" hidden>
           <button id="btn-upload-csv" class="btn">CSV Dosyasi Yukle</button>
           <span class="upload-hint">CSV formati (max 10MB)</span>
         </div>
         <div id="csv-upload-status" class="upload-status"></div>
-        <table id="csv-files-table">
+        <table>
           <thead>
             <tr>
               <th>Dosya Adi</th>
@@ -235,7 +257,7 @@
       <div class="card">
         <h2>Uygulama Kayitlari</h2>
         <div class="log-controls">
-          <button id="btn-refresh-logs" class="btn btn-small">Yenile</button>
+          <button id="btn-refresh-logs" class="btn btn-small btn-secondary">Yenile</button>
           <label><input type="checkbox" id="log-auto-refresh" checked> Otomatik yenileme (5s)</label>
         </div>
         <div id="log-container" class="log-container">
@@ -246,7 +268,7 @@
   </main>
 
   <footer>
-    <p>Automatic Prayer Times &copy; 2025</p>
+    <p>Automatic Prayer Times</p>
   </footer>
 
   <script src="js/api.js"></script>

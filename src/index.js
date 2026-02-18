@@ -369,6 +369,12 @@ class AdhanPlayer {
     }
     this.loadConfig();
 
+    // Update fetcher with new config
+    if (this.fetcher) {
+      this.fetcher.locationId = this.config.diyanetLocationId || 11618;
+      this.fetcher.csvFileName = this.config.csvFile || 'prayer-times.csv';
+    }
+
     // Reload CSV parser if csvFile changed
     const csvPath = join(__dirname, '..', 'data', this.config.csvFile || 'prayer-times.csv');
     if (existsSync(csvPath)) {

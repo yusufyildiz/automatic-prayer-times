@@ -281,5 +281,38 @@ export function registerApiRoutes(app, adhanPlayer) {
     }
   });
 
+  // ===== FETCH PRAYER TIMES FROM API =====
+  app.post('/api/actions/fetch-times', async (req, res) => {
+    try {
+      await adhanPlayer.fetcher.fetchAndSave();
+      await adhanPlayer.parser.reload();
+      adhanPlayer.scheduleTodaysPrayers();
+      res.json({ success: true, message: 'Vakit verileri basariyla guncellendi' });
+    } catch (error) {
+      res.json({ success: false, message: `Veri cekme basarisiz: ${error.message}` });
+    }
+  });
+
+  // ===== SYSTEM TOGGLE =====
+  app.post('/api/actions/toggle-system', (req, res) => {
+    try {
+      const { enabled } = req.body;
+      if (enabled) {
+        adhanPlayer.scheduleTodaysPrayers();
+        adhanPlayer.isRunning = true;
+        console.log('System enabled via dashboard');
+      } else {
+        if (adhanPlayer.scheduler) {
+          adhanPlayer.scheduler.clearScheduledJobs();
+        }
+        adhanPlayer.isRunning = false;
+        console.log('System disabled via dashboard');
+      }
+      res.json({ success: true, isRunning: adhanPlayer.isRunning });
+    } catch (error) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
   console.log('API routes registered for web dashboard');
 }

@@ -109,4 +109,15 @@ const API = {
   testCast() {
     return this.request('/api/actions/test-cast', { method: 'POST' });
   },
+
+  fetchPrayerTimes() {
+    return this.request('/api/actions/fetch-times', { method: 'POST' });
+  },
+
+  toggleSystem(enabled) {
+    return this.request('/api/actions/toggle-system', {
+      method: 'POST',
+      body: JSON.stringify({ enabled }),
+    });
+  },
 };

@@ -4,7 +4,7 @@
 (function () {
   // Prayer name translations
   const PRAYER_NAMES = {
-    fajr: 'Imsak',
+    fajr: 'Sabah',
     sunrise: 'Gunes',
     dhuhr: 'Ogle',
     asr: 'Ikindi',
@@ -48,22 +48,24 @@
   }
 
   function renderStatus(status) {
-    document.getElementById('status-running').textContent = status.isRunning ? 'Calisiyor' : 'Durduruldu';
-    document.getElementById('status-running').style.color = status.isRunning ? 'var(--success)' : 'var(--danger)';
+    const runningEl = document.getElementById('status-running');
+    const isRunning = status.isRunning;
+    runningEl.innerHTML = `<span class="status-dot ${isRunning ? 'online' : 'offline'}"></span>${isRunning ? 'Calisiyor' : 'Durduruldu'}`;
+    runningEl.style.color = isRunning ? 'var(--success)' : 'var(--danger)';
+    document.getElementById('system-toggle').checked = isRunning;
     document.getElementById('status-device-ip').textContent = status.config?.deviceIp || '--';
     document.getElementById('status-timezone').textContent = status.config?.timezone || '--';
-    document.getElementById('status-server-url').textContent = status.serverUrl || '--';
   }
 
   function renderTodayTimes(status) {
-    const tbody = document.getElementById('today-times-body');
+    const container = document.getElementById('today-times-body');
     const dateLabel = document.getElementById('today-date');
     const today = new Date().toISOString().split('T')[0];
     dateLabel.textContent = today;
 
     const times = status.todaysPrayerTimes;
     if (!times) {
-      tbody.innerHTML = '<tr><td colspan="3">Bugun icin vakit bilgisi bulunamadi</td></tr>';
+      container.innerHTML = '<div class="prayer-empty">Bugun icin vakit bilgisi bulunamadi</div>';
       return;
     }
 
@@ -74,19 +76,21 @@
 
     const prayerOrder = ['fajr', 'sunrise', 'dhuhr', 'asr', 'maghrib', 'isha'];
 
-    tbody.innerHTML = prayerOrder
+    container.innerHTML = prayerOrder
       .filter(p => times[p])
       .map(prayer => {
         const time = times[prayer];
         const [h, m] = time.split(':').map(Number);
         const prayerMinutes = h * 60 + m;
         const isActive = activePrayers.includes(prayer);
+        const isNext = nextPrayer && nextPrayer.prayer === prayer;
+        const isPassed = prayerMinutes <= nowMinutes;
 
         let badgeClass, badgeText;
-        if (nextPrayer && nextPrayer.prayer === prayer) {
+        if (isNext) {
           badgeClass = 'badge-next';
           badgeText = 'Siradaki';
-        } else if (prayerMinutes <= nowMinutes) {
+        } else if (isPassed) {
           badgeClass = 'badge-passed';
           badgeText = 'Gecti';
         } else {
@@ -99,11 +103,17 @@
           badgeText = 'Pasif';
         }
 
-        return `<tr>
-          <td>${PRAYER_NAMES[prayer] || prayer}</td>
-          <td>${time}</td>
-          <td><span class="badge ${badgeClass}">${badgeText}</span></td>
-        </tr>`;
+        const cardClass = [
+          'prayer-card',
+          isNext ? 'prayer-card-next' : '',
+          isPassed ? 'prayer-card-passed' : '',
+        ].filter(Boolean).join(' ');
+
+        return `<div class="${cardClass}" data-prayer="${prayer}">
+          <div class="prayer-card-name">${PRAYER_NAMES[prayer] || prayer}</div>
+          <div class="prayer-card-time">${time}</div>
+          <span class="badge ${badgeClass}">${badgeText}</span>
+        </div>`;
       })
       .join('');
   }
@@ -180,6 +190,21 @@
     }
   });
 
+  // System toggle
+  document.getElementById('system-toggle').addEventListener('change', async (e) => {
+    const resultEl = document.getElementById('action-result');
+    try {
+      const res = await API.toggleSystem(e.target.checked);
+      resultEl.className = 'action-result success';
+      resultEl.textContent = res.isRunning ? 'Sistem baslatildi' : 'Sistem durduruldu';
+      loadHome();
+    } catch (err) {
+      resultEl.className = 'action-result error';
+      resultEl.textContent = `Hata: ${err.message}`;
+      e.target.checked = !e.target.checked;
+    }
+  });
+
   // === SETTINGS TAB ===
   async function loadSettings() {
     try {
@@ -218,7 +243,6 @@
 
     audioSelects.forEach(id => {
       const select = document.getElementById(id);
-      const currentVal = select.value;
       select.innerHTML = id === 'cfg-adhanAudioFile'
         ? '<option value="">-- Sec --</option>'
         : '<option value="">Varsayilan</option>';
@@ -385,7 +409,7 @@
       <td class="file-size">${formatSize(f.size)}</td>
       <td class="file-size">${new Date(f.modified).toLocaleDateString('tr-TR')}</td>
       <td>
-        <button class="btn btn-small" onclick="playAudio('${escapeHtml(f.name)}', this)">Dinle</button>
+        <button class="btn btn-small btn-secondary" onclick="playAudio('${escapeHtml(f.name)}', this)">Dinle</button>
         <button class="btn btn-danger btn-small" onclick="deleteAudioFile('${escapeHtml(f.name)}')">Sil</button>
       </td>
     </tr>`).join('');
@@ -423,15 +447,60 @@
     }
   };
 
-  // === CSV FILES TAB ===
+  // === DATA TAB ===
   async function loadCsvFiles() {
     try {
-      const data = await API.getCsvFiles();
-      renderCsvFiles(data.files);
+      const [csvData, config] = await Promise.all([
+        API.getCsvFiles(),
+        API.getConfig(),
+      ]);
+      renderCsvFiles(csvData.files);
+      // Populate API settings
+      document.getElementById('cfg-diyanetLocationId').value = config.diyanetLocationId || 11618;
+      document.getElementById('cfg-data-timezone').value = config.timezone || '';
     } catch (e) {
-      console.error('Failed to load CSV files:', e);
+      console.error('Failed to load data tab:', e);
     }
   }
+
+  // Save API settings
+  document.getElementById('btn-save-api-settings').addEventListener('click', async () => {
+    const statusEl = document.getElementById('api-settings-status');
+    try {
+      const config = await API.getConfig();
+      const updated = {
+        ...config,
+        diyanetLocationId: parseInt(document.getElementById('cfg-diyanetLocationId').value) || 11618,
+        timezone: document.getElementById('cfg-data-timezone').value || config.timezone,
+      };
+      await API.saveConfig(updated);
+      statusEl.className = 'action-result success';
+      statusEl.textContent = 'API ayarlari kaydedildi';
+      setTimeout(() => { statusEl.textContent = ''; }, 3000);
+    } catch (e) {
+      statusEl.className = 'action-result error';
+      statusEl.textContent = `Hata: ${e.message}`;
+    }
+  });
+
+  // Fetch prayer times from API
+  document.getElementById('btn-fetch-api').addEventListener('click', async () => {
+    const statusEl = document.getElementById('api-settings-status');
+    statusEl.className = 'action-result';
+    statusEl.textContent = 'Vakitler cekiliyor...';
+    try {
+      const res = await API.fetchPrayerTimes();
+      statusEl.className = `action-result ${res.success ? 'success' : 'error'}`;
+      statusEl.textContent = res.message;
+      if (res.success) {
+        loadCsvFiles();
+        loadHome();
+      }
+    } catch (e) {
+      statusEl.className = 'action-result error';
+      statusEl.textContent = `Hata: ${e.message}`;
+    }
+  });
 
   function renderCsvFiles(files) {
     const tbody = document.getElementById('csv-files-body');
