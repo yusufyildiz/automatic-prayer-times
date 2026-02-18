@@ -2,10 +2,12 @@ import { PrayerTimesParser } from './csv-parser.js';
 import { AudioServer } from './server.js';
 import { GoogleCastPlayer, discoverDevices } from './cast.js';
 import { PrayerScheduler } from './scheduler.js';
+import { DiyanetFetcher } from './diyanet-fetcher.js';
 import { registerApiRoutes } from './api-routes.js';
 import { readFileSync, writeFileSync, existsSync } from 'fs';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
+import cron from 'node-cron';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -19,6 +21,8 @@ class AdhanPlayer {
     this.parser = null;
     this.server = null;
     this.scheduler = null;
+    this.fetcher = null;
+    this.monthlyFetchJob = null;
     this.castPlayer = null;
     this.isRunning = false;
     this.rootDir = join(__dirname, '..');
@@ -84,11 +88,15 @@ class AdhanPlayer {
     // Load configuration
     this.loadConfig();
 
-    // Initialize CSV parser
+    // Initialize Diyanet fetcher
+    this.fetcher = new DiyanetFetcher({
+      locationId: this.config.diyanetLocationId || 11618,
+      csvFile: this.config.csvFile || 'prayer-times.csv',
+    });
+
+    // Auto-fetch prayer times if CSV is missing or data doesn't cover today
     const csvPath = join(__dirname, '..', 'data', this.config.csvFile || 'prayer-times.csv');
-    if (!existsSync(csvPath)) {
-      throw new Error(`CSV file not found: ${csvPath}. Please add your prayer times CSV file.`);
-    }
+    await this.ensurePrayerTimesData(csvPath);
 
     this.parser = new PrayerTimesParser(csvPath);
     await this.parser.load();
@@ -126,6 +134,65 @@ class AdhanPlayer {
     registerApiRoutes(this.server.app, this);
 
     console.log('\n✅ Initialization complete!\n');
+  }
+
+  /**
+   * Ensure prayer times CSV exists and has data for today
+   */
+  async ensurePrayerTimesData(csvPath) {
+    let needsFetch = false;
+
+    if (!existsSync(csvPath)) {
+      console.log('CSV file not found, fetching from Diyanet...');
+      needsFetch = true;
+    } else {
+      // Check if CSV has data for today
+      const tempParser = new PrayerTimesParser(csvPath);
+      await tempParser.load();
+      if (!tempParser.getTodaysPrayerTimes()) {
+        console.log('CSV does not contain today\'s prayer times, fetching from Diyanet...');
+        needsFetch = true;
+      }
+    }
+
+    if (needsFetch) {
+      try {
+        await this.fetcher.fetchAndSave();
+      } catch (error) {
+        console.error('Failed to fetch prayer times from Diyanet:', error.message);
+        if (!existsSync(csvPath)) {
+          throw new Error('No prayer times CSV available and Diyanet fetch failed');
+        }
+        console.warn('Using existing CSV file as fallback');
+      }
+    }
+  }
+
+  /**
+   * Schedule monthly prayer times fetch (runs on the 25th at 03:00)
+   */
+  scheduleMonthlyFetch() {
+    this.monthlyFetchJob = cron.schedule(
+      '0 3 25 * *',
+      async () => {
+        console.log('\n📅 Monthly prayer times refresh - fetching from Diyanet...');
+        try {
+          await this.fetcher.fetchAndSave();
+          // Reload parser with new data
+          await this.parser.reload();
+          // Re-schedule today's prayers
+          this.scheduleTodaysPrayers();
+          console.log('✅ Monthly prayer times update complete');
+        } catch (error) {
+          console.error('❌ Monthly fetch failed:', error.message);
+        }
+      },
+      {
+        scheduled: true,
+        timezone: this.config.timezone,
+      }
+    );
+    console.log('Scheduled monthly Diyanet fetch (25th of each month at 03:00)');
   }
 
   /**
@@ -325,6 +392,9 @@ class AdhanPlayer {
         this.scheduleTodaysPrayers();
       });
 
+      // Schedule monthly Diyanet fetch
+      this.scheduleMonthlyFetch();
+
       this.isRunning = true;
 
       console.log('\n🚀 Adhan Player is running!');
@@ -366,6 +436,11 @@ class AdhanPlayer {
 
     if (this.scheduler) {
       this.scheduler.stop();
+    }
+
+    if (this.monthlyFetchJob) {
+      this.monthlyFetchJob.stop();
+      this.monthlyFetchJob = null;
     }
 
     if (this.server) {
