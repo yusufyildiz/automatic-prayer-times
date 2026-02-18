@@ -6,9 +6,16 @@ Automatically play Adhan (Islamic call to prayer) on your Google Nest Hub at sch
 
 - 🕌 Plays Adhan audio at exact prayer times
 - 🎵 Different Adhan audio for each prayer (optional)
+- 🔊 Per-prayer volume control (each prayer can have its own volume level)
 - 📅 Reads prayer times from CSV file (supports English & Turkish formats)
-- 🔊 Casts audio to Google Nest Hub
+- 🌐 Automatic prayer times fetching from Diyanet API
+- 🔊 Casts audio to Google Nest Hub / Google speakers
 - ⏰ Automatic scheduling with daily refresh
+- 🌅 Sabah (Fajr) prayer scheduled at sunrise - 40 minutes
+- 🎛️ Web dashboard with full management UI (Sacred Twilight theme)
+- 🧪 Device test with beep sound at 30% volume
+- 🎧 Audio file preview (listen in browser)
+- 🔄 System on/off toggle from dashboard
 - 🇦🇹 Vienna timezone configured (customizable)
 - 🍓 Runs on Raspberry Pi
 
@@ -145,6 +152,8 @@ Miladi Tarih,İmsak,Güneş,Öğle,İkindi,Akşam,Yatsı
 | `serverPort` | HTTP server port for audio streaming | 3000 |
 | `localIp` | Override local IP detection | Auto-detect |
 | `testConnection` | Test Cast connection on startup | false |
+| `volumes` | Per-prayer volume levels (object: prayer -> 0.0-1.0) | null (uses global volume) |
+| `diyanetLocationId` | Diyanet API location ID for auto-fetch | 11618 (Vienna) |
 
 ## Running on Raspberry Pi
 
@@ -237,11 +246,19 @@ journalctl -u adhan-player -f
 ```
 automatic-prayer-times/
 ├── src/
-│   ├── index.js          # Main entry point
-│   ├── scheduler.js      # Cron job scheduler
+│   ├── index.js          # Main entry point & beep.wav generator
+│   ├── scheduler.js      # Cron job scheduler (fajr = sunrise-40min)
 │   ├── cast.js           # Google Cast integration
 │   ├── csv-parser.js     # CSV prayer times reader
-│   └── server.js         # HTTP server for audio
+│   ├── server.js         # HTTP server for audio
+│   ├── api-routes.js     # REST API for web dashboard
+│   └── diyanet-fetcher.js # Diyanet API prayer times fetcher
+├── public/
+│   ├── index.html        # Dashboard HTML
+│   ├── css/style.css     # Sacred Twilight theme
+│   └── js/
+│       ├── api.js        # API client
+│       └── app.js        # Dashboard logic
 ├── audio/
 │   ├── adhan.mp3         # Default Adhan (or single file)
 │   ├── adhan-fajr.mp3    # Fajr-specific Adhan (optional)
