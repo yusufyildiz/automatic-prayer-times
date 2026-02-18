@@ -297,17 +297,72 @@
     }
   }
 
+  // Shared audio element for previewing audio files
+  let previewAudio = null;
+  let currentlyPlayingBtn = null;
+
+  window.playAudio = function (filename, btn) {
+    // If already playing this file, stop it
+    if (previewAudio && currentlyPlayingBtn === btn) {
+      previewAudio.pause();
+      previewAudio = null;
+      btn.textContent = 'Dinle';
+      btn.classList.remove('btn-playing');
+      currentlyPlayingBtn = null;
+      return;
+    }
+
+    // Stop any currently playing audio
+    if (previewAudio) {
+      previewAudio.pause();
+      if (currentlyPlayingBtn) {
+        currentlyPlayingBtn.textContent = 'Dinle';
+        currentlyPlayingBtn.classList.remove('btn-playing');
+      }
+    }
+
+    previewAudio = new Audio(`/audio/${encodeURIComponent(filename)}`);
+    currentlyPlayingBtn = btn;
+    btn.textContent = 'Durdur';
+    btn.classList.add('btn-playing');
+
+    previewAudio.play().catch(err => {
+      console.error('Audio playback error:', err);
+      btn.textContent = 'Dinle';
+      btn.classList.remove('btn-playing');
+      currentlyPlayingBtn = null;
+    });
+
+    previewAudio.addEventListener('ended', () => {
+      btn.textContent = 'Dinle';
+      btn.classList.remove('btn-playing');
+      currentlyPlayingBtn = null;
+      previewAudio = null;
+    });
+  };
+
   function renderAudioFiles(files) {
     const tbody = document.getElementById('audio-files-body');
     if (files.length === 0) {
       tbody.innerHTML = '<tr><td colspan="4">Henuz ses dosyasi yok</td></tr>';
       return;
     }
+
+    // Stop any playing audio when re-rendering
+    if (previewAudio) {
+      previewAudio.pause();
+      previewAudio = null;
+      currentlyPlayingBtn = null;
+    }
+
     tbody.innerHTML = files.map(f => `<tr>
       <td>${escapeHtml(f.name)}</td>
       <td class="file-size">${formatSize(f.size)}</td>
       <td class="file-size">${new Date(f.modified).toLocaleDateString('tr-TR')}</td>
-      <td><button class="btn btn-danger btn-small" onclick="deleteAudioFile('${escapeHtml(f.name)}')">Sil</button></td>
+      <td>
+        <button class="btn btn-small" onclick="playAudio('${escapeHtml(f.name)}', this)">Dinle</button>
+        <button class="btn btn-danger btn-small" onclick="deleteAudioFile('${escapeHtml(f.name)}')">Sil</button>
+      </td>
     </tr>`).join('');
   }
 

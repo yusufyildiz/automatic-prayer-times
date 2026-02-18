@@ -4,13 +4,70 @@ import { GoogleCastPlayer, discoverDevices } from './cast.js';
 import { PrayerScheduler } from './scheduler.js';
 import { DiyanetFetcher } from './diyanet-fetcher.js';
 import { registerApiRoutes } from './api-routes.js';
-import { readFileSync, writeFileSync, existsSync } from 'fs';
+import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'fs';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
 import cron from 'node-cron';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
+
+/**
+ * Generate a short beep WAV file (440Hz sine wave, 0.5s, mono, 16-bit)
+ */
+function generateBeepWav(filePath) {
+  const sampleRate = 44100;
+  const duration = 0.5;
+  const frequency = 440;
+  const numSamples = Math.floor(sampleRate * duration);
+  const dataSize = numSamples * 2; // 16-bit = 2 bytes per sample
+
+  const buffer = Buffer.alloc(44 + dataSize);
+
+  // WAV header
+  buffer.write('RIFF', 0);
+  buffer.writeUInt32LE(36 + dataSize, 4);
+  buffer.write('WAVE', 8);
+  buffer.write('fmt ', 12);
+  buffer.writeUInt32LE(16, 16);       // chunk size
+  buffer.writeUInt16LE(1, 20);        // PCM format
+  buffer.writeUInt16LE(1, 22);        // mono
+  buffer.writeUInt32LE(sampleRate, 24);
+  buffer.writeUInt32LE(sampleRate * 2, 28); // byte rate
+  buffer.writeUInt16LE(2, 32);        // block align
+  buffer.writeUInt16LE(16, 34);       // bits per sample
+  buffer.write('data', 36);
+  buffer.writeUInt32LE(dataSize, 40);
+
+  // Generate sine wave samples
+  for (let i = 0; i < numSamples; i++) {
+    const sample = Math.sin(2 * Math.PI * frequency * i / sampleRate);
+    // Apply fade in/out (50ms) to avoid clicks
+    const fadeLen = Math.floor(sampleRate * 0.05);
+    let amplitude = 0.8;
+    if (i < fadeLen) amplitude *= i / fadeLen;
+    if (i > numSamples - fadeLen) amplitude *= (numSamples - i) / fadeLen;
+    const intSample = Math.max(-32768, Math.min(32767, Math.floor(sample * amplitude * 32767)));
+    buffer.writeInt16LE(intSample, 44 + i * 2);
+  }
+
+  writeFileSync(filePath, buffer);
+  console.log(`Generated beep sound: ${filePath}`);
+}
+
+/**
+ * Ensure beep.wav exists in the audio directory
+ */
+function ensureBeepWav(rootDir) {
+  const audioDir = join(rootDir, 'audio');
+  if (!existsSync(audioDir)) {
+    mkdirSync(audioDir, { recursive: true });
+  }
+  const beepPath = join(audioDir, 'beep.wav');
+  if (!existsSync(beepPath)) {
+    generateBeepWav(beepPath);
+  }
+}
 
 /**
  * Main application entry point
@@ -84,6 +141,9 @@ class AdhanPlayer {
    */
   async initialize() {
     console.log('\n🕌 Initializing Adhan Player...\n');
+
+    // Ensure beep.wav exists for device testing
+    ensureBeepWav(this.rootDir);
 
     // Load configuration
     this.loadConfig();

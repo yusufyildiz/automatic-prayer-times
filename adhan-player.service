@@ -4,8 +4,8 @@ After=network.target
 
 [Service]
 Type=simple
-User=pi
-WorkingDirectory=/home/pi/automatic-prayer-times
+User=adhan
+WorkingDirectory=/home/adhan/automatic-prayer-times
 ExecStart=/usr/bin/node src/index.js
 Restart=on-failure
 RestartSec=10
@@ -19,7 +19,7 @@ Environment=NODE_ENV=production
 NoNewPrivileges=true
 ProtectSystem=strict
 ProtectHome=read-only
-ReadWritePaths=/home/pi/automatic-prayer-times
+ReadWritePaths=/home/adhan/automatic-prayer-times
 
 [Install]
 WantedBy=multi-user.target

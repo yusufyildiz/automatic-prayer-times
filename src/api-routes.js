@@ -251,16 +251,26 @@ export function registerApiRoutes(app, adhanPlayer) {
   });
 
   app.post('/api/actions/test-cast', async (req, res) => {
+    let player = null;
     try {
-      const player = new GoogleCastPlayer({
+      player = new GoogleCastPlayer({
         deviceIp: adhanPlayer.config.deviceIp,
-        volume: adhanPlayer.config.volume,
+        volume: 0.3,
       });
-      await player.connect();
-      player.cleanup();
-      res.json({ success: true, message: 'Successfully connected to Cast device' });
+
+      const beepUrl = adhanPlayer.server.getAudioUrl('beep.wav');
+      await player.playAudio(beepUrl, {
+        title: 'Test Beep',
+        subtitle: 'Device Test',
+        contentType: 'audio/wav',
+        timeout: 5000,
+      });
+
+      res.json({ success: true, message: 'Test sesi basariyla calindi (volume %30)' });
     } catch (error) {
-      res.json({ success: false, message: `Connection failed: ${error.message}` });
+      res.json({ success: false, message: `Test basarisiz: ${error.message}` });
+    } finally {
+      if (player) player.cleanup();
     }
   });
 

@@ -45,7 +45,16 @@ export class PrayerScheduler {
       }
 
       // Parse the time string (HH:MM format)
-      const [hours, minutes] = timeStr.split(':').map(Number);
+      let [hours, minutes] = timeStr.split(':').map(Number);
+
+      // For fajr: schedule at sunrise - 40 minutes instead of CSV fajr time
+      if (prayer === 'fajr' && prayerTimes.sunrise) {
+        const [sunH, sunM] = prayerTimes.sunrise.split(':').map(Number);
+        const fajrTotal = (sunH * 60 + sunM) - 40;
+        hours = Math.floor(fajrTotal / 60);
+        minutes = fajrTotal % 60;
+        console.log(`  ${prayer}: CSV time ${timeStr}, adjusted to ${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')} (sunrise ${prayerTimes.sunrise} - 40min)`);
+      }
 
       // Create a datetime for today at the prayer time
       const prayerDateTime = now.clone().hour(hours).minute(minutes).second(0);
@@ -56,6 +65,9 @@ export class PrayerScheduler {
         continue;
       }
 
+      // Format the effective time string
+      const effectiveTime = `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
+
       // Create cron expression: minute hour * * *
       const cronExpression = `${minutes} ${hours} * * *`;
 
@@ -63,8 +75,8 @@ export class PrayerScheduler {
       const job = cron.schedule(
         cronExpression,
         () => {
-          console.log(`\n⏰ Prayer time triggered: ${prayer} at ${timeStr}`);
-          this.onPrayerTime(prayer, timeStr);
+          console.log(`\n⏰ Prayer time triggered: ${prayer} at ${effectiveTime}`);
+          this.onPrayerTime(prayer, effectiveTime);
         },
         {
           scheduled: true,
@@ -74,12 +86,16 @@ export class PrayerScheduler {
 
       this.scheduledJobs.set(prayer, {
         job,
-        time: timeStr,
+        time: effectiveTime,
         cronExpression,
       });
 
       const timeUntil = prayerDateTime.diff(now, 'minute');
-      console.log(`  ${prayer}: ${timeStr} (in ${timeUntil} minutes)`);
+      if (prayer !== 'fajr' || !prayerTimes.sunrise) {
+        console.log(`  ${prayer}: ${effectiveTime} (in ${timeUntil} minutes)`);
+      } else {
+        console.log(`    → scheduled at ${effectiveTime} (in ${timeUntil} minutes)`);
+      }
     }
 
     console.log(`\nScheduled ${this.scheduledJobs.size} prayers for today`);

@@ -529,3 +529,13 @@ td .btn {
 td .btn + .btn {
   margin-left: 0.35rem;
 }
+
+/* === AUDIO PLAY BUTTON === */
+.btn-playing {
+  background: var(--warn);
+  color: #000;
+}
+
+.btn-playing:hover {
+  background: #ffa726;
+}
