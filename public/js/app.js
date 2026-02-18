@@ -44,6 +44,7 @@
       renderStatus(currentStatus);
       renderTodayTimes(currentStatus);
       startCountdown(currentStatus.nextPrayer);
+      renderTomorrowTimes();
     } catch (e) {
       console.error('Failed to load status:', e);
     }
@@ -118,6 +119,40 @@
         </div>`;
       })
       .join('');
+  }
+
+  async function renderTomorrowTimes() {
+    const container = document.getElementById('tomorrow-times-body');
+    const dateLabel = document.getElementById('tomorrow-date');
+
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    const tomorrowDate = tomorrow.toISOString().split('T')[0];
+    dateLabel.textContent = tomorrowDate;
+
+    try {
+      const data = await API.getPrayerTimes(tomorrowDate);
+      const times = data.prayerTimes;
+      if (!times) {
+        container.innerHTML = '<div class="prayer-empty">Yarin icin vakit bilgisi bulunamadi</div>';
+        return;
+      }
+
+      const prayerOrder = ['fajr', 'sunrise', 'dhuhr', 'asr', 'maghrib', 'isha'];
+
+      container.innerHTML = prayerOrder
+        .filter(p => times[p])
+        .map(prayer => {
+          const time = times[prayer];
+          return `<div class="prayer-card" data-prayer="${prayer}">
+            <div class="prayer-card-name">${PRAYER_NAMES[prayer] || prayer}</div>
+            <div class="prayer-card-time">${time}</div>
+          </div>`;
+        })
+        .join('');
+    } catch (e) {
+      container.innerHTML = '<div class="prayer-empty">Yarin icin vakit bilgisi bulunamadi</div>';
+    }
   }
 
   function startCountdown(nextPrayer) {
