@@ -134,6 +134,13 @@ export class AudioServer {
    * Get the server URL
    */
   getServerUrl() {
+    if (this.localIp === '127.0.0.1') {
+      const detected = this.getLocalIp();
+      if (detected !== '127.0.0.1') {
+        this.localIp = detected;
+        console.log(`Local IP updated to: ${this.localIp}`);
+      }
+    }
     return `http://${this.localIp}:${this.port}`;
   }
 
