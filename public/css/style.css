@@ -910,6 +910,29 @@ fieldset legend {
   letter-spacing: 0.3px;
 }
 
+/* Volume row with test button */
+.volume-row {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.volume-row input[type="range"] {
+  flex: 1;
+}
+
+.btn-test-prayer {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.85rem;
+  flex-shrink: 0;
+}
+
 /* Volume display in fieldset */
 fieldset .form-group label {
   display: flex;

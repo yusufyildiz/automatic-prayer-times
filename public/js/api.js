@@ -120,4 +120,22 @@ const API = {
       body: JSON.stringify({ enabled }),
     });
   },
+
+  testPrayer(prayer, volume) {
+    return this.request('/api/actions/test-prayer', {
+      method: 'POST',
+      body: JSON.stringify({ action: 'start', prayer, volume }),
+    });
+  },
+
+  stopTestPrayer() {
+    return this.request('/api/actions/test-prayer', {
+      method: 'POST',
+      body: JSON.stringify({ action: 'stop' }),
+    });
+  },
+
+  getTestPrayerStatus() {
+    return this.request('/api/actions/test-prayer/status');
+  },
 };

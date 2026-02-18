@@ -16,6 +16,8 @@
   let currentStatus = null;
   let countdownInterval = null;
   let logInterval = null;
+  let activeTestPrayer = null;
+  let testPollInterval = null;
 
   // === TAB NAVIGATION ===
   document.querySelectorAll('.tab-btn').forEach(btn => {
@@ -615,6 +617,57 @@
     div.textContent = str;
     return div.innerHTML;
   }
+
+  // === TEST PRAYER BUTTONS ===
+  function resetAllTestButtons() {
+    document.querySelectorAll('.btn-test-prayer').forEach(btn => {
+      btn.innerHTML = '&#9654;';
+      btn.classList.remove('btn-playing');
+    });
+    activeTestPrayer = null;
+  }
+
+  document.querySelectorAll('.btn-test-prayer').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const prayer = btn.dataset.prayer;
+
+      if (activeTestPrayer === prayer) {
+        // Stop current test
+        try { await API.stopTestPrayer(); } catch (e) { /* ignore */ }
+        resetAllTestButtons();
+        return;
+      }
+
+      // Read current volume from the slider
+      const slider = document.getElementById(`cfg-vol-${prayer}`);
+      const volume = parseInt(slider.value) / 100;
+
+      // Reset all buttons first
+      resetAllTestButtons();
+
+      // Start new test
+      btn.innerHTML = '&#9724;';
+      btn.classList.add('btn-playing');
+      activeTestPrayer = prayer;
+
+      try {
+        await API.testPrayer(prayer, volume);
+      } catch (e) {
+        resetAllTestButtons();
+      }
+    });
+  });
+
+  // Poll test prayer status every 3 seconds to detect natural end
+  testPollInterval = setInterval(async () => {
+    if (!activeTestPrayer) return;
+    try {
+      const status = await API.getTestPrayerStatus();
+      if (!status.playing) {
+        resetAllTestButtons();
+      }
+    } catch (e) { /* ignore */ }
+  }, 3000);
 
   // === INIT ===
   loadHome();

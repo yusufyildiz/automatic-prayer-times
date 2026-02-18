@@ -13,6 +13,10 @@ export function registerApiRoutes(app, adhanPlayer) {
   const dataDir = join(rootDir, 'data');
   const configPath = join(rootDir, 'config', 'config.json');
 
+  // Test prayer playback state
+  let activeTestPlayer = null;
+  let activeTestPrayer = null;
+
   // Ensure directories exist
   [audioDir, dataDir].forEach(dir => {
     if (!existsSync(dir)) mkdirSync(dir, { recursive: true });
@@ -291,6 +295,77 @@ export function registerApiRoutes(app, adhanPlayer) {
     } catch (error) {
       res.json({ success: false, message: `Veri cekme basarisiz: ${error.message}` });
     }
+  });
+
+  // ===== TEST PRAYER =====
+  app.post('/api/actions/test-prayer', async (req, res) => {
+    const { action, prayer, volume } = req.body;
+
+    if (action === 'stop') {
+      if (activeTestPlayer) {
+        try { await activeTestPlayer.stop(); } catch (e) { /* ignore */ }
+        activeTestPlayer.cleanup();
+        activeTestPlayer = null;
+        activeTestPrayer = null;
+      }
+      return res.json({ success: true, playing: false });
+    }
+
+    if (action === 'start') {
+      if (!prayer || volume === undefined) {
+        return res.status(400).json({ error: 'prayer and volume are required' });
+      }
+
+      // Stop any previous test
+      if (activeTestPlayer) {
+        try { await activeTestPlayer.stop(); } catch (e) { /* ignore */ }
+        activeTestPlayer.cleanup();
+        activeTestPlayer = null;
+        activeTestPrayer = null;
+      }
+
+      try {
+        const audioFile = adhanPlayer.getAudioFileForPrayer(prayer);
+        const audioUrl = adhanPlayer.server.getAudioUrl(audioFile);
+
+        activeTestPlayer = new GoogleCastPlayer({
+          deviceIp: adhanPlayer.config.deviceIp,
+          volume: volume,
+        });
+        activeTestPrayer = prayer;
+
+        // Fire-and-forget — don't await, ezan is long
+        activeTestPlayer.playAudio(audioUrl, {
+          title: `Test - ${prayer}`,
+          subtitle: 'Ses Testi',
+          contentType: 'audio/mp3',
+          timeout: 10 * 60 * 1000,
+        }).then(() => {
+          // Playback finished naturally
+          if (activeTestPrayer === prayer) {
+            activeTestPlayer = null;
+            activeTestPrayer = null;
+          }
+        }).catch(() => {
+          if (activeTestPrayer === prayer) {
+            activeTestPlayer = null;
+            activeTestPrayer = null;
+          }
+        });
+
+        return res.json({ success: true, playing: true, prayer });
+      } catch (error) {
+        activeTestPlayer = null;
+        activeTestPrayer = null;
+        return res.json({ success: false, message: error.message });
+      }
+    }
+
+    res.status(400).json({ error: 'Invalid action. Use "start" or "stop".' });
+  });
+
+  app.get('/api/actions/test-prayer/status', (req, res) => {
+    res.json({ playing: !!activeTestPrayer, prayer: activeTestPrayer });
   });
 
   // ===== SYSTEM TOGGLE =====
