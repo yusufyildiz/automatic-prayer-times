@@ -239,11 +239,30 @@
         if (el && config.audioFiles[p]) el.value = config.audioFiles[p];
       });
     }
+
+    // Per-prayer volume sliders
+    const defaultVol = Math.round((config.volume || 0.5) * 100);
+    ['fajr', 'dhuhr', 'asr', 'maghrib', 'isha'].forEach(p => {
+      const slider = document.getElementById(`cfg-vol-${p}`);
+      const display = document.getElementById(`vol-display-${p}`);
+      const val = config.volumes && config.volumes[p] !== undefined
+        ? Math.round(config.volumes[p] * 100)
+        : defaultVol;
+      slider.value = val;
+      display.textContent = `${val}%`;
+    });
   }
 
   // Volume slider display
   document.getElementById('cfg-volume').addEventListener('input', (e) => {
     document.getElementById('volume-display').textContent = `${e.target.value}%`;
+  });
+
+  // Per-prayer volume slider displays
+  ['fajr', 'dhuhr', 'asr', 'maghrib', 'isha'].forEach(p => {
+    document.getElementById(`cfg-vol-${p}`).addEventListener('input', (e) => {
+      document.getElementById(`vol-display-${p}`).textContent = `${e.target.value}%`;
+    });
   });
 
   // Config form submit
@@ -262,6 +281,11 @@
       if (val) audioFiles[p] = val;
     });
 
+    const volumes = {};
+    ['fajr', 'dhuhr', 'asr', 'maghrib', 'isha'].forEach(p => {
+      volumes[p] = parseInt(document.getElementById(`cfg-vol-${p}`).value) / 100;
+    });
+
     const config = {
       deviceIp: document.getElementById('cfg-deviceIp').value,
       deviceName: document.getElementById('cfg-deviceName').value,
@@ -272,6 +296,7 @@
       prayers,
       adhanAudioFile: document.getElementById('cfg-adhanAudioFile').value,
       audioFiles: Object.keys(audioFiles).length > 0 ? audioFiles : undefined,
+      volumes,
       csvFile: currentStatus?.config?.csvFile || 'prayer-times.csv',
       testConnection: document.getElementById('cfg-testConnection').checked,
     };

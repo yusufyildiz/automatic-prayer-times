@@ -110,6 +110,13 @@ export function registerApiRoutes(app, adhanPlayer) {
       if (!Array.isArray(newConfig.prayers) || newConfig.prayers.length === 0) {
         return res.status(400).json({ error: 'prayers must be a non-empty array' });
       }
+      if (newConfig.volumes && typeof newConfig.volumes === 'object') {
+        for (const [p, v] of Object.entries(newConfig.volumes)) {
+          if (typeof v !== 'number' || v < 0 || v > 1) {
+            return res.status(400).json({ error: `volumes.${p} must be a number between 0 and 1` });
+          }
+        }
+      }
 
       await adhanPlayer.reloadConfig(newConfig);
       res.json({ success: true, config: adhanPlayer.config });

@@ -327,11 +327,17 @@ class AdhanPlayer {
     console.log(`\n🕌 Time for ${prayer} prayer (${time})`);
 
     try {
+      // Get per-prayer volume, fallback to global volume
+      const volume = (this.config.volumes && this.config.volumes[prayer] !== undefined)
+        ? this.config.volumes[prayer]
+        : this.config.volume;
+
       // Create new cast player instance for this playback
       this.castPlayer = new GoogleCastPlayer({
         deviceIp: this.config.deviceIp,
-        volume: this.config.volume,
+        volume,
       });
+      console.log(`Volume: ${Math.round(volume * 100)}%`);
 
       // Get audio file for this specific prayer
       const audioFile = this.getAudioFileForPrayer(prayer);
