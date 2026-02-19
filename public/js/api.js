@@ -121,6 +121,21 @@ const API = {
     });
   },
 
+  setSilentMode(enabled, duration) {
+    return this.request('/api/actions/silent-mode', {
+      method: 'POST',
+      body: JSON.stringify({ enabled, duration }),
+    });
+  },
+
+  getHistoryStats() {
+    return this.request('/api/history/stats');
+  },
+
+  getHistory(limit = 50) {
+    return this.request(`/api/history?limit=${limit}`);
+  },
+
   testPrayer(prayer, volume) {
     return this.request('/api/actions/test-prayer', {
       method: 'POST',

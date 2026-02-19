@@ -121,6 +121,27 @@ export function registerApiRoutes(app, adhanPlayer) {
           }
         }
       }
+      if (newConfig.friday && typeof newConfig.friday === 'object') {
+        if (newConfig.friday.volume !== undefined) {
+          if (typeof newConfig.friday.volume !== 'number' || newConfig.friday.volume < 0 || newConfig.friday.volume > 1) {
+            return res.status(400).json({ error: 'friday.volume must be a number between 0 and 1' });
+          }
+        }
+      }
+      if (newConfig.ramadan && typeof newConfig.ramadan === 'object') {
+        if (newConfig.ramadan.iftarAlertMinutesBefore !== undefined) {
+          const v = newConfig.ramadan.iftarAlertMinutesBefore;
+          if (typeof v !== 'number' || v < 1 || v > 60) {
+            return res.status(400).json({ error: 'ramadan.iftarAlertMinutesBefore must be 1-60' });
+          }
+        }
+        if (newConfig.ramadan.sahurAlertMinutesBefore !== undefined) {
+          const v = newConfig.ramadan.sahurAlertMinutesBefore;
+          if (typeof v !== 'number' || v < 1 || v > 60) {
+            return res.status(400).json({ error: 'ramadan.sahurAlertMinutesBefore must be 1-60' });
+          }
+        }
+      }
 
       await adhanPlayer.reloadConfig(newConfig);
       res.json({ success: true, config: adhanPlayer.config });
@@ -250,6 +271,29 @@ export function registerApiRoutes(app, adhanPlayer) {
     res.json({ logs });
   });
 
+  // ===== HISTORY =====
+  app.get('/api/history/stats', (req, res) => {
+    try {
+      if (!adhanPlayer.prayerHistory) {
+        return res.json({ stats: { total: 0, played: 0, failed: 0, skipped: 0, successRate: 0, daily: [] } });
+      }
+      const stats = adhanPlayer.prayerHistory.getWeeklyStats();
+      res.json({ stats });
+    } catch (error) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.get('/api/history', (req, res) => {
+    try {
+      const limit = Math.min(parseInt(req.query.limit) || 50, 200);
+      const history = adhanPlayer.prayerHistory ? adhanPlayer.prayerHistory.getHistory(limit) : [];
+      res.json({ history });
+    } catch (error) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
   // ===== ACTIONS =====
   app.post('/api/actions/reschedule', (req, res) => {
     try {
@@ -366,6 +410,25 @@ export function registerApiRoutes(app, adhanPlayer) {
 
   app.get('/api/actions/test-prayer/status', (req, res) => {
     res.json({ playing: !!activeTestPrayer, prayer: activeTestPrayer });
+  });
+
+  // ===== SILENT MODE =====
+  app.post('/api/actions/silent-mode', (req, res) => {
+    try {
+      const { enabled, duration } = req.body;
+      if (enabled) {
+        adhanPlayer.enableSilentMode(duration || null);
+      } else {
+        adhanPlayer.disableSilentMode();
+      }
+      res.json({
+        success: true,
+        silentMode: adhanPlayer.silentMode,
+        silentModeExpiry: adhanPlayer.silentModeExpiry,
+      });
+    } catch (error) {
+      res.status(500).json({ error: error.message });
+    }
   });
 
   // ===== SYSTEM TOGGLE =====

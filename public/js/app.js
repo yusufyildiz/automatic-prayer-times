@@ -38,13 +38,19 @@
   });
 
   // === HOME TAB ===
+  let silentCountdownInterval = null;
+  let ramadanCountdownInterval = null;
+
   async function loadHome() {
     try {
       currentStatus = await API.getStatus();
       renderStatus(currentStatus);
+      renderSilentMode(currentStatus);
       renderTodayTimes(currentStatus);
       startCountdown(currentStatus.nextPrayer);
       renderTomorrowTimes();
+      renderRamadanCard(currentStatus);
+      renderWeeklySummary();
     } catch (e) {
       console.error('Failed to load status:', e);
     }
@@ -63,7 +69,8 @@
   function renderTodayTimes(status) {
     const container = document.getElementById('today-times-body');
     const dateLabel = document.getElementById('today-date');
-    const today = new Date().toISOString().split('T')[0];
+    const now = new Date();
+    const today = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0') + '-' + String(now.getDate()).padStart(2, '0');
     dateLabel.textContent = today;
 
     const times = status.todaysPrayerTimes;
@@ -74,7 +81,6 @@
 
     const activePrayers = status.config?.prayers || [];
     const nextPrayer = status.nextPrayer;
-    const now = new Date();
     const nowMinutes = now.getHours() * 60 + now.getMinutes();
 
     const prayerOrder = ['fajr', 'sunrise', 'dhuhr', 'asr', 'maghrib', 'isha'];
@@ -127,7 +133,7 @@
 
     const tomorrow = new Date();
     tomorrow.setDate(tomorrow.getDate() + 1);
-    const tomorrowDate = tomorrow.toISOString().split('T')[0];
+    const tomorrowDate = tomorrow.getFullYear() + '-' + String(tomorrow.getMonth() + 1).padStart(2, '0') + '-' + String(tomorrow.getDate()).padStart(2, '0');
     dateLabel.textContent = tomorrowDate;
 
     try {
@@ -170,12 +176,17 @@
     }
 
     nameEl.textContent = PRAYER_NAMES[nextPrayer.prayer] || nextPrayer.prayer;
-    timeEl.textContent = `Saat: ${nextPrayer.time}`;
+    timeEl.textContent = nextPrayer.isTomorrow
+      ? `Yarin saat: ${nextPrayer.time}`
+      : `Saat: ${nextPrayer.time}`;
 
     function updateCountdown() {
       const now = new Date();
       const [h, m] = nextPrayer.time.split(':').map(Number);
       const target = new Date(now);
+      if (nextPrayer.isTomorrow) {
+        target.setDate(target.getDate() + 1);
+      }
       target.setHours(h, m, 0, 0);
 
       const diff = target - now;
@@ -195,6 +206,192 @@
 
     updateCountdown();
     countdownInterval = setInterval(updateCountdown, 1000);
+  }
+
+  // === SILENT MODE ===
+  function renderSilentMode(status) {
+    const card = document.getElementById('silent-mode-card');
+    const toggleBtn = document.getElementById('btn-silent-toggle');
+    const activeDiv = document.getElementById('silent-mode-active');
+    const optionsDiv = document.getElementById('silent-mode-options');
+
+    if (!card) return;
+
+    if (status.silentMode) {
+      card.classList.add('silent-active');
+      toggleBtn.textContent = 'Sesi Ac';
+      toggleBtn.classList.remove('btn-secondary');
+      toggleBtn.classList.add('btn-danger');
+      activeDiv.style.display = 'block';
+      optionsDiv.style.display = 'none';
+
+      if (silentCountdownInterval) clearInterval(silentCountdownInterval);
+      const countdownEl = document.getElementById('silent-countdown');
+
+      if (status.silentModeExpiry) {
+        function updateSilentCountdown() {
+          const diff = new Date(status.silentModeExpiry) - new Date();
+          if (diff <= 0) {
+            countdownEl.textContent = 'Sure doldu';
+            clearInterval(silentCountdownInterval);
+            setTimeout(loadHome, 2000);
+            return;
+          }
+          const m = Math.floor(diff / 60000);
+          const s = Math.floor((diff % 60000) / 1000);
+          countdownEl.textContent = `${m}dk ${s}sn kaldi`;
+        }
+        updateSilentCountdown();
+        silentCountdownInterval = setInterval(updateSilentCountdown, 1000);
+      } else {
+        countdownEl.textContent = 'Suresiz sessiz mod aktif';
+      }
+    } else {
+      card.classList.remove('silent-active');
+      toggleBtn.textContent = 'Sessize Al';
+      toggleBtn.classList.add('btn-secondary');
+      toggleBtn.classList.remove('btn-danger');
+      activeDiv.style.display = 'none';
+      optionsDiv.style.display = 'flex';
+      if (silentCountdownInterval) clearInterval(silentCountdownInterval);
+    }
+  }
+
+  // Silent mode toggle button
+  document.getElementById('btn-silent-toggle').addEventListener('click', async () => {
+    if (currentStatus && currentStatus.silentMode) {
+      await API.setSilentMode(false);
+      loadHome();
+    } else {
+      // Default: 60 minutes
+      await API.setSilentMode(true, 60);
+      loadHome();
+    }
+  });
+
+  // Silent mode duration buttons
+  document.querySelectorAll('.silent-duration').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const duration = parseInt(btn.dataset.duration);
+      await API.setSilentMode(true, duration || null);
+      loadHome();
+    });
+  });
+
+  // === RAMADAN CARD ===
+  function renderRamadanCard(status) {
+    const card = document.getElementById('ramadan-card');
+    if (!card) return;
+
+    const ramadan = status.config?.ramadan;
+    if (!ramadan || !ramadan.enabled) {
+      card.style.display = 'none';
+      if (ramadanCountdownInterval) clearInterval(ramadanCountdownInterval);
+      return;
+    }
+
+    card.style.display = '';
+    const times = status.todaysPrayerTimes;
+    if (!times) return;
+
+    // Iftar = maghrib time, Sahur = fajr adjusted time
+    const iftarTime = times.maghrib;
+    const iftarEl = document.getElementById('ramadan-iftar-time');
+    const iftarCountEl = document.getElementById('ramadan-iftar-countdown');
+    iftarEl.textContent = iftarTime || '--:--';
+
+    // Sahur = sunrise - 40min (same as fajr scheduling)
+    let sahurTime = times.fajr;
+    if (times.sunrise) {
+      const [sunH, sunM] = times.sunrise.split(':').map(Number);
+      const total = (sunH * 60 + sunM) - 40;
+      sahurTime = `${String(Math.floor(total / 60)).padStart(2, '0')}:${String(total % 60).padStart(2, '0')}`;
+    }
+    const sahurEl = document.getElementById('ramadan-sahur-time');
+    const sahurCountEl = document.getElementById('ramadan-sahur-countdown');
+    sahurEl.textContent = sahurTime || '--:--';
+
+    if (ramadanCountdownInterval) clearInterval(ramadanCountdownInterval);
+
+    function updateRamadanCountdown() {
+      const now = new Date();
+      const today = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0') + '-' + String(now.getDate()).padStart(2, '0');
+
+      if (iftarTime) {
+        const [ih, im] = iftarTime.split(':').map(Number);
+        const iftarDate = new Date(`${today}T${String(ih).padStart(2,'0')}:${String(im).padStart(2,'0')}:00`);
+        const iftarDiff = iftarDate - now;
+        if (iftarDiff > 0) {
+          const h = Math.floor(iftarDiff / 3600000);
+          const m = Math.floor((iftarDiff % 3600000) / 60000);
+          const s = Math.floor((iftarDiff % 60000) / 1000);
+          iftarCountEl.textContent = `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+        } else {
+          iftarCountEl.textContent = 'Iftar vakti gecti';
+        }
+      }
+
+      if (sahurTime) {
+        const [sh, sm] = sahurTime.split(':').map(Number);
+        const sahurDate = new Date(`${today}T${String(sh).padStart(2,'0')}:${String(sm).padStart(2,'0')}:00`);
+        const sahurDiff = sahurDate - now;
+        if (sahurDiff > 0) {
+          const h = Math.floor(sahurDiff / 3600000);
+          const m = Math.floor((sahurDiff % 3600000) / 60000);
+          const s = Math.floor((sahurDiff % 60000) / 1000);
+          sahurCountEl.textContent = `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+        } else {
+          sahurCountEl.textContent = 'Sahur vakti gecti';
+        }
+      }
+    }
+    updateRamadanCountdown();
+    ramadanCountdownInterval = setInterval(updateRamadanCountdown, 1000);
+  }
+
+  // === WEEKLY SUMMARY ===
+  async function renderWeeklySummary() {
+    const card = document.getElementById('weekly-summary-card');
+    const statsEl = document.getElementById('weekly-stats');
+    const chartEl = document.getElementById('weekly-chart');
+    if (!card || !statsEl) return;
+
+    try {
+      const data = await API.getHistoryStats();
+      const s = data.stats;
+      if (!s || s.total === 0) {
+        statsEl.innerHTML = '<div class="prayer-empty">Henuz kayit yok</div>';
+        chartEl.innerHTML = '';
+        return;
+      }
+
+      statsEl.innerHTML = `
+        <div class="stat-box stat-played"><div class="stat-number">${s.played}</div><div class="stat-label">Calindi</div></div>
+        <div class="stat-box stat-failed"><div class="stat-number">${s.failed}</div><div class="stat-label">Basarisiz</div></div>
+        <div class="stat-box stat-skipped"><div class="stat-number">${s.skipped}</div><div class="stat-label">Atlandi</div></div>
+        <div class="stat-box stat-rate"><div class="stat-number">${s.successRate}%</div><div class="stat-label">Basari</div></div>
+      `;
+
+      // Daily bar chart
+      if (s.daily && s.daily.length > 0) {
+        const maxCount = Math.max(...s.daily.map(d => d.played + d.failed + d.skipped), 1);
+        chartEl.innerHTML = s.daily.map(d => {
+          const dayLabel = d.date.slice(5); // MM-DD
+          const total = d.played + d.failed + d.skipped;
+          const pct = Math.round((total / maxCount) * 100);
+          return `<div class="chart-bar-group">
+            <div class="chart-bar-container">
+              <div class="chart-bar chart-bar-played" style="height:${Math.round((d.played/maxCount)*100)}%"></div>
+              <div class="chart-bar chart-bar-failed" style="height:${Math.round((d.failed/maxCount)*100)}%"></div>
+            </div>
+            <div class="chart-bar-label">${dayLabel}</div>
+          </div>`;
+        }).join('');
+      }
+    } catch (e) {
+      statsEl.innerHTML = '<div class="prayer-empty">Ozet yuklenemedi</div>';
+      chartEl.innerHTML = '';
+    }
   }
 
   // Action buttons
@@ -258,17 +455,17 @@
   function populateConfigForm(config, audioFiles) {
     document.getElementById('cfg-deviceIp').value = config.deviceIp || '';
     document.getElementById('cfg-deviceName').value = config.deviceName || '';
-    document.getElementById('cfg-volume').value = Math.round((config.volume || 0.5) * 100);
-    document.getElementById('volume-display').textContent = `${Math.round((config.volume || 0.5) * 100)}%`;
     document.getElementById('cfg-timezone').value = config.timezone || '';
     document.getElementById('cfg-serverPort').value = config.serverPort || 3000;
     document.getElementById('cfg-localIp').value = config.localIp || '';
     document.getElementById('cfg-testConnection').checked = config.testConnection || false;
 
-    // Prayer checkboxes
+    // Prayer checkboxes + inactive state
     const prayers = config.prayers || [];
-    document.querySelectorAll('#prayer-checkboxes input[type="checkbox"]').forEach(cb => {
+    document.querySelectorAll('.prayer-setting input[type="checkbox"]').forEach(cb => {
       cb.checked = prayers.includes(cb.value);
+      const card = cb.closest('.prayer-setting');
+      card.classList.toggle('inactive', !cb.checked);
     });
 
     // Audio file selects
@@ -301,30 +498,129 @@
       });
     }
 
-    // Per-prayer volume sliders
+    // Per-prayer volume steppers
     const defaultVol = Math.round((config.volume || 0.5) * 100);
     ['fajr', 'dhuhr', 'asr', 'maghrib', 'isha'].forEach(p => {
-      const slider = document.getElementById(`cfg-vol-${p}`);
       const display = document.getElementById(`vol-display-${p}`);
-      const val = config.volumes && config.volumes[p] !== undefined
+      const raw = config.volumes && config.volumes[p] !== undefined
         ? Math.round(config.volumes[p] * 100)
         : defaultVol;
-      slider.value = val;
+      const val = Math.round(raw / 5) * 5;
+      display.dataset.value = val;
       display.textContent = `${val}%`;
+    });
+
+    // Friday settings
+    const fridayAudioSelect = document.getElementById('cfg-friday-audio');
+    if (fridayAudioSelect) {
+      fridayAudioSelect.innerHTML = '<option value="">Yok (Normal ezan)</option>';
+      audioFiles.forEach(f => {
+        const opt = document.createElement('option');
+        opt.value = f.name;
+        opt.textContent = f.name;
+        fridayAudioSelect.appendChild(opt);
+      });
+      if (config.friday && config.friday.audioFile) {
+        fridayAudioSelect.value = config.friday.audioFile;
+      }
+    }
+    const fridayVolDisplay = document.getElementById('friday-vol-display');
+    if (fridayVolDisplay) {
+      const fv = config.friday && config.friday.volume !== undefined
+        ? Math.round(config.friday.volume * 100)
+        : Math.round((config.volume || 0.5) * 100);
+      const fvRound = Math.round(fv / 5) * 5;
+      fridayVolDisplay.dataset.value = fvRound;
+      fridayVolDisplay.textContent = `${fvRound}%`;
+    }
+
+    // Ramadan settings — always populate audio selects
+    const ramadanEnabled = document.getElementById('cfg-ramadan-enabled');
+    const ramadanSub = document.getElementById('ramadan-sub-settings');
+    if (ramadanEnabled) {
+      const isEnabled = config.ramadan?.enabled || false;
+      ramadanEnabled.checked = isEnabled;
+      if (ramadanSub) ramadanSub.style.display = isEnabled ? '' : 'none';
+
+      const iftarMinEl = document.getElementById('cfg-iftar-minutes');
+      const sahurMinEl = document.getElementById('cfg-sahur-minutes');
+      if (iftarMinEl) iftarMinEl.value = config.ramadan?.iftarAlertMinutesBefore || 15;
+      if (sahurMinEl) sahurMinEl.value = config.ramadan?.sahurAlertMinutesBefore || 30;
+
+      // Always populate audio selects
+      ['cfg-iftar-audio', 'cfg-sahur-audio'].forEach(id => {
+        const sel = document.getElementById(id);
+        if (!sel) return;
+        sel.innerHTML = '<option value="">Yok</option>';
+        audioFiles.forEach(f => {
+          const opt = document.createElement('option');
+          opt.value = f.name;
+          opt.textContent = f.name;
+          sel.appendChild(opt);
+        });
+      });
+      const iftarAudioEl = document.getElementById('cfg-iftar-audio');
+      const sahurAudioEl = document.getElementById('cfg-sahur-audio');
+      if (iftarAudioEl && config.ramadan?.iftarAlertAudioFile) iftarAudioEl.value = config.ramadan.iftarAlertAudioFile;
+      if (sahurAudioEl && config.ramadan?.sahurAlertAudioFile) sahurAudioEl.value = config.ramadan.sahurAlertAudioFile;
+    }
+  }
+
+  // Stepper buttons
+  document.querySelectorAll('.prayer-setting').forEach(item => {
+    const prayer = item.dataset.prayer;
+    const display = document.getElementById(`vol-display-${prayer}`);
+    const step = 5;
+
+    item.querySelector('.stepper-minus').addEventListener('click', () => {
+      let val = parseInt(display.dataset.value) - step;
+      if (val < 0) val = 0;
+      display.dataset.value = val;
+      display.textContent = `${val}%`;
+    });
+
+    item.querySelector('.stepper-plus').addEventListener('click', () => {
+      let val = parseInt(display.dataset.value) + step;
+      if (val > 100) val = 100;
+      display.dataset.value = val;
+      display.textContent = `${val}%`;
+    });
+  });
+
+  // Friday volume stepper
+  const fridayVolMinus = document.getElementById('friday-vol-minus');
+  const fridayVolPlus = document.getElementById('friday-vol-plus');
+  const fridayVolDisplay = document.getElementById('friday-vol-display');
+  if (fridayVolMinus && fridayVolPlus && fridayVolDisplay) {
+    fridayVolMinus.addEventListener('click', () => {
+      let val = parseInt(fridayVolDisplay.dataset.value) - 5;
+      if (val < 0) val = 0;
+      fridayVolDisplay.dataset.value = val;
+      fridayVolDisplay.textContent = `${val}%`;
+    });
+    fridayVolPlus.addEventListener('click', () => {
+      let val = parseInt(fridayVolDisplay.dataset.value) + 5;
+      if (val > 100) val = 100;
+      fridayVolDisplay.dataset.value = val;
+      fridayVolDisplay.textContent = `${val}%`;
     });
   }
 
-  // Volume slider display
-  document.getElementById('cfg-volume').addEventListener('input', (e) => {
-    document.getElementById('volume-display').textContent = `${e.target.value}%`;
-  });
-
-  // Per-prayer volume slider displays
-  ['fajr', 'dhuhr', 'asr', 'maghrib', 'isha'].forEach(p => {
-    document.getElementById(`cfg-vol-${p}`).addEventListener('input', (e) => {
-      document.getElementById(`vol-display-${p}`).textContent = `${e.target.value}%`;
+  // Prayer toggle — dim card when unchecked
+  document.querySelectorAll('.prayer-setting input[type="checkbox"]').forEach(cb => {
+    cb.addEventListener('change', () => {
+      cb.closest('.prayer-setting').classList.toggle('inactive', !cb.checked);
     });
   });
+
+  // Ramadan enabled toggle
+  const ramadanEnabledCb = document.getElementById('cfg-ramadan-enabled');
+  if (ramadanEnabledCb) {
+    ramadanEnabledCb.addEventListener('change', () => {
+      const sub = document.getElementById('ramadan-sub-settings');
+      if (sub) sub.style.display = ramadanEnabledCb.checked ? '' : 'none';
+    });
+  }
 
   // Config form submit
   document.getElementById('config-form').addEventListener('submit', async (e) => {
@@ -332,7 +628,7 @@
     const statusEl = document.getElementById('config-save-status');
 
     const prayers = [];
-    document.querySelectorAll('#prayer-checkboxes input:checked').forEach(cb => {
+    document.querySelectorAll('.prayer-setting input[type="checkbox"]:checked').forEach(cb => {
       prayers.push(cb.value);
     });
 
@@ -344,13 +640,37 @@
 
     const volumes = {};
     ['fajr', 'dhuhr', 'asr', 'maghrib', 'isha'].forEach(p => {
-      volumes[p] = parseInt(document.getElementById(`cfg-vol-${p}`).value) / 100;
+      volumes[p] = parseInt(document.getElementById(`vol-display-${p}`).dataset.value) / 100;
     });
+
+    // Friday settings
+    const fridayAudio = document.getElementById('cfg-friday-audio');
+    const fridayVolEl = document.getElementById('friday-vol-display');
+    let friday = undefined;
+    if (fridayAudio && fridayAudio.value) {
+      friday = {
+        audioFile: fridayAudio.value,
+        volume: fridayVolEl ? parseInt(fridayVolEl.dataset.value) / 100 : 0.5,
+      };
+    }
+
+    // Ramadan settings
+    const ramadanEnabled = document.getElementById('cfg-ramadan-enabled');
+    let ramadan = undefined;
+    if (ramadanEnabled) {
+      ramadan = {
+        enabled: ramadanEnabled.checked,
+        iftarAlertMinutesBefore: parseInt(document.getElementById('cfg-iftar-minutes')?.value) || 15,
+        iftarAlertAudioFile: document.getElementById('cfg-iftar-audio')?.value || '',
+        sahurAlertMinutesBefore: parseInt(document.getElementById('cfg-sahur-minutes')?.value) || 30,
+        sahurAlertAudioFile: document.getElementById('cfg-sahur-audio')?.value || '',
+      };
+    }
 
     const config = {
       deviceIp: document.getElementById('cfg-deviceIp').value,
       deviceName: document.getElementById('cfg-deviceName').value,
-      volume: parseInt(document.getElementById('cfg-volume').value) / 100,
+      volume: currentStatus?.config?.volume || 0.5,
       timezone: document.getElementById('cfg-timezone').value,
       serverPort: parseInt(document.getElementById('cfg-serverPort').value) || 3000,
       localIp: document.getElementById('cfg-localIp').value || null,
@@ -358,7 +678,10 @@
       adhanAudioFile: document.getElementById('cfg-adhanAudioFile').value,
       audioFiles: Object.keys(audioFiles).length > 0 ? audioFiles : undefined,
       volumes,
+      friday,
+      ramadan: ramadan || currentStatus?.config?.ramadan,
       csvFile: currentStatus?.config?.csvFile || 'prayer-times.csv',
+      diyanetLocationId: currentStatus?.config?.diyanetLocationId || 11618,
       testConnection: document.getElementById('cfg-testConnection').checked,
     };
 
@@ -673,9 +996,9 @@
         return;
       }
 
-      // Read current volume from the slider
-      const slider = document.getElementById(`cfg-vol-${prayer}`);
-      const volume = parseInt(slider.value) / 100;
+      // Read current volume from the stepper
+      const display = document.getElementById(`vol-display-${prayer}`);
+      const volume = parseInt(display.dataset.value) / 100;
 
       // Reset all buttons first
       resetAllTestButtons();

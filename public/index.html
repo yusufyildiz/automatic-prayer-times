@@ -4,6 +4,11 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Ezan Vakitleri</title>
+  <link rel="manifest" href="/manifest.json">
+  <meta name="theme-color" content="#d4a34b">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <link rel="apple-touch-icon" href="/icons/icon-192.png">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600;700&family=Karla:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -58,6 +63,25 @@
         </div>
       </div>
 
+      <div class="card silent-mode-card card-reveal" style="--reveal-delay: 0.05s" id="silent-mode-card">
+        <div class="silent-mode-header">
+          <div class="silent-mode-title">
+            <svg class="silent-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 5L6 9H2v6h4l5 4V5z"/><line x1="23" y1="9" x2="17" y2="15"/><line x1="17" y1="9" x2="23" y2="15"/></svg>
+            <span>Sessiz Mod</span>
+          </div>
+          <button id="btn-silent-toggle" class="btn btn-small btn-secondary">Sessize Al</button>
+        </div>
+        <div id="silent-mode-active" class="silent-mode-active" style="display:none">
+          <div class="silent-countdown" id="silent-countdown"></div>
+        </div>
+        <div id="silent-mode-options" class="silent-options">
+          <button class="btn btn-small btn-secondary silent-duration" data-duration="30">30 dk</button>
+          <button class="btn btn-small btn-secondary silent-duration" data-duration="60">1 saat</button>
+          <button class="btn btn-small btn-secondary silent-duration" data-duration="120">2 saat</button>
+          <button class="btn btn-small btn-secondary silent-duration" data-duration="0">Suresiz</button>
+        </div>
+      </div>
+
       <div class="card card-hero card-reveal" style="--reveal-delay: 0.1s">
         <div class="next-prayer">
           <div class="prayer-label">Sonraki Namaz</div>
@@ -79,7 +103,30 @@
         <div id="tomorrow-times-body" class="prayer-grid"></div>
       </div>
 
-      <div class="card card-reveal" style="--reveal-delay: 0.35s">
+      <div class="card card-hero ramadan-card card-reveal" style="--reveal-delay: 0.28s" id="ramadan-card">
+        <h2>Ramazan</h2>
+        <div class="ramadan-countdowns">
+          <div class="ramadan-countdown-item">
+            <div class="ramadan-label">Iftar</div>
+            <div class="ramadan-time" id="ramadan-iftar-time">--:--</div>
+            <div class="ramadan-countdown-value" id="ramadan-iftar-countdown">--:--:--</div>
+          </div>
+          <div class="ramadan-divider"></div>
+          <div class="ramadan-countdown-item">
+            <div class="ramadan-label">Sahur</div>
+            <div class="ramadan-time" id="ramadan-sahur-time">--:--</div>
+            <div class="ramadan-countdown-value" id="ramadan-sahur-countdown">--:--:--</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card card-reveal" style="--reveal-delay: 0.32s" id="weekly-summary-card">
+        <h2>Haftalik Ozet</h2>
+        <div id="weekly-stats" class="summary-stats"></div>
+        <div id="weekly-chart" class="weekly-chart"></div>
+      </div>
+
+      <div class="card card-reveal" style="--reveal-delay: 0.38s">
         <div class="card-actions">
           <button id="btn-reschedule" class="btn">Yeniden Planla</button>
           <button id="btn-test-cast" class="btn btn-secondary">Cihaz Testi</button>
@@ -102,10 +149,6 @@
             <input type="text" id="cfg-deviceName" placeholder="Google Nest Hub">
           </div>
           <div class="form-group">
-            <label for="cfg-volume">Varsayilan Ses Seviyesi: <span id="volume-display">70%</span></label>
-            <input type="range" id="cfg-volume" min="0" max="100" value="70">
-          </div>
-          <div class="form-group">
             <label for="cfg-timezone">Saat Dilimi</label>
             <input type="text" id="cfg-timezone" placeholder="Europe/Vienna">
           </div>
@@ -119,81 +162,135 @@
           </div>
 
           <div class="form-group">
-            <label>Aktif Namazlar</label>
-            <div class="checkbox-group" id="prayer-checkboxes">
-              <label><input type="checkbox" value="fajr" checked> Sabah</label>
-              <label><input type="checkbox" value="dhuhr" checked> Ogle</label>
-              <label><input type="checkbox" value="asr" checked> Ikindi</label>
-              <label><input type="checkbox" value="maghrib" checked> Aksam</label>
-              <label><input type="checkbox" value="isha" checked> Yatsi</label>
-            </div>
-          </div>
-
-          <div class="form-group">
             <label for="cfg-adhanAudioFile">Varsayilan Ses Dosyasi</label>
             <select id="cfg-adhanAudioFile"><option value="">-- Sec --</option></select>
           </div>
 
           <fieldset>
-            <legend>Namaz Bazinda Ses Seviyesi</legend>
-            <div class="form-group">
-              <label for="cfg-vol-fajr">Sabah <span id="vol-display-fajr">--</span></label>
-              <div class="volume-row">
-                <input type="range" id="cfg-vol-fajr" min="0" max="100" value="50">
-                <button type="button" class="btn btn-small btn-secondary btn-test-prayer" data-prayer="fajr">&#9654;</button>
+            <legend>Namaz Ayarlari</legend>
+            <div class="prayer-settings-grid">
+              <div class="prayer-setting" data-prayer="fajr">
+                <div class="prayer-setting-top">
+                  <label class="prayer-toggle">
+                    <input type="checkbox" value="fajr" checked>
+                    <span class="prayer-toggle-name">Sabah</span>
+                  </label>
+                  <div class="prayer-setting-actions">
+                    <div class="stepper">
+                      <button type="button" class="stepper-btn stepper-minus">−</button>
+                      <span class="stepper-value" id="vol-display-fajr">50%</span>
+                      <button type="button" class="stepper-btn stepper-plus">+</button>
+                    </div>
+                    <button type="button" class="btn btn-small btn-secondary btn-test-prayer" data-prayer="fajr">&#9654;</button>
+                  </div>
+                </div>
+                <select id="cfg-audio-fajr"><option value="">Varsayilan</option></select>
               </div>
-            </div>
-            <div class="form-group">
-              <label for="cfg-vol-dhuhr">Ogle <span id="vol-display-dhuhr">--</span></label>
-              <div class="volume-row">
-                <input type="range" id="cfg-vol-dhuhr" min="0" max="100" value="50">
-                <button type="button" class="btn btn-small btn-secondary btn-test-prayer" data-prayer="dhuhr">&#9654;</button>
+              <div class="prayer-setting" data-prayer="dhuhr">
+                <div class="prayer-setting-top">
+                  <label class="prayer-toggle">
+                    <input type="checkbox" value="dhuhr" checked>
+                    <span class="prayer-toggle-name">Ogle</span>
+                  </label>
+                  <div class="prayer-setting-actions">
+                    <div class="stepper">
+                      <button type="button" class="stepper-btn stepper-minus">−</button>
+                      <span class="stepper-value" id="vol-display-dhuhr">50%</span>
+                      <button type="button" class="stepper-btn stepper-plus">+</button>
+                    </div>
+                    <button type="button" class="btn btn-small btn-secondary btn-test-prayer" data-prayer="dhuhr">&#9654;</button>
+                  </div>
+                </div>
+                <select id="cfg-audio-dhuhr"><option value="">Varsayilan</option></select>
+                <div class="friday-settings" id="friday-settings">
+                  <span class="friday-label">Cuma Selasi</span>
+                  <select id="cfg-friday-audio"><option value="">Yok (Normal ezan)</option></select>
+                  <div class="friday-volume-row">
+                    <span class="friday-volume-label">Ses</span>
+                    <div class="stepper stepper-compact">
+                      <button type="button" class="stepper-btn stepper-minus" id="friday-vol-minus">−</button>
+                      <span class="stepper-value" id="friday-vol-display">50%</span>
+                      <button type="button" class="stepper-btn stepper-plus" id="friday-vol-plus">+</button>
+                    </div>
+                  </div>
+                </div>
               </div>
-            </div>
-            <div class="form-group">
-              <label for="cfg-vol-asr">Ikindi <span id="vol-display-asr">--</span></label>
-              <div class="volume-row">
-                <input type="range" id="cfg-vol-asr" min="0" max="100" value="50">
-                <button type="button" class="btn btn-small btn-secondary btn-test-prayer" data-prayer="asr">&#9654;</button>
+              <div class="prayer-setting" data-prayer="asr">
+                <div class="prayer-setting-top">
+                  <label class="prayer-toggle">
+                    <input type="checkbox" value="asr" checked>
+                    <span class="prayer-toggle-name">Ikindi</span>
+                  </label>
+                  <div class="prayer-setting-actions">
+                    <div class="stepper">
+                      <button type="button" class="stepper-btn stepper-minus">−</button>
+                      <span class="stepper-value" id="vol-display-asr">50%</span>
+                      <button type="button" class="stepper-btn stepper-plus">+</button>
+                    </div>
+                    <button type="button" class="btn btn-small btn-secondary btn-test-prayer" data-prayer="asr">&#9654;</button>
+                  </div>
+                </div>
+                <select id="cfg-audio-asr"><option value="">Varsayilan</option></select>
               </div>
-            </div>
-            <div class="form-group">
-              <label for="cfg-vol-maghrib">Aksam <span id="vol-display-maghrib">--</span></label>
-              <div class="volume-row">
-                <input type="range" id="cfg-vol-maghrib" min="0" max="100" value="50">
-                <button type="button" class="btn btn-small btn-secondary btn-test-prayer" data-prayer="maghrib">&#9654;</button>
+              <div class="prayer-setting" data-prayer="maghrib">
+                <div class="prayer-setting-top">
+                  <label class="prayer-toggle">
+                    <input type="checkbox" value="maghrib" checked>
+                    <span class="prayer-toggle-name">Aksam</span>
+                  </label>
+                  <div class="prayer-setting-actions">
+                    <div class="stepper">
+                      <button type="button" class="stepper-btn stepper-minus">−</button>
+                      <span class="stepper-value" id="vol-display-maghrib">50%</span>
+                      <button type="button" class="stepper-btn stepper-plus">+</button>
+                    </div>
+                    <button type="button" class="btn btn-small btn-secondary btn-test-prayer" data-prayer="maghrib">&#9654;</button>
+                  </div>
+                </div>
+                <select id="cfg-audio-maghrib"><option value="">Varsayilan</option></select>
               </div>
-            </div>
-            <div class="form-group">
-              <label for="cfg-vol-isha">Yatsi <span id="vol-display-isha">--</span></label>
-              <div class="volume-row">
-                <input type="range" id="cfg-vol-isha" min="0" max="100" value="50">
-                <button type="button" class="btn btn-small btn-secondary btn-test-prayer" data-prayer="isha">&#9654;</button>
+              <div class="prayer-setting" data-prayer="isha">
+                <div class="prayer-setting-top">
+                  <label class="prayer-toggle">
+                    <input type="checkbox" value="isha" checked>
+                    <span class="prayer-toggle-name">Yatsi</span>
+                  </label>
+                  <div class="prayer-setting-actions">
+                    <div class="stepper">
+                      <button type="button" class="stepper-btn stepper-minus">−</button>
+                      <span class="stepper-value" id="vol-display-isha">50%</span>
+                      <button type="button" class="stepper-btn stepper-plus">+</button>
+                    </div>
+                    <button type="button" class="btn btn-small btn-secondary btn-test-prayer" data-prayer="isha">&#9654;</button>
+                  </div>
+                </div>
+                <select id="cfg-audio-isha"><option value="">Varsayilan</option></select>
               </div>
             </div>
           </fieldset>
 
-          <fieldset>
-            <legend>Namaz Bazinda Ses Dosyalari</legend>
+          <fieldset id="ramadan-fieldset">
+            <legend>Ramazan Modu</legend>
             <div class="form-group">
-              <label for="cfg-audio-fajr">Sabah</label>
-              <select id="cfg-audio-fajr"><option value="">Varsayilan</option></select>
+              <label><input type="checkbox" id="cfg-ramadan-enabled"> Ramazan modunu aktif et</label>
             </div>
-            <div class="form-group">
-              <label for="cfg-audio-dhuhr">Ogle</label>
-              <select id="cfg-audio-dhuhr"><option value="">Varsayilan</option></select>
-            </div>
-            <div class="form-group">
-              <label for="cfg-audio-asr">Ikindi</label>
-              <select id="cfg-audio-asr"><option value="">Varsayilan</option></select>
-            </div>
-            <div class="form-group">
-              <label for="cfg-audio-maghrib">Aksam</label>
-              <select id="cfg-audio-maghrib"><option value="">Varsayilan</option></select>
-            </div>
-            <div class="form-group">
-              <label for="cfg-audio-isha">Yatsi</label>
-              <select id="cfg-audio-isha"><option value="">Varsayilan</option></select>
+            <div id="ramadan-sub-settings" class="ramadan-sub-settings">
+              <div class="form-group">
+                <label for="cfg-iftar-audio">Iftar Uyari Sesi</label>
+                <select id="cfg-iftar-audio"><option value="">Yok</option></select>
+              </div>
+              <div class="form-group">
+                <label for="cfg-iftar-minutes">Iftar Uyari (dk once)</label>
+                <input type="number" id="cfg-iftar-minutes" value="15" min="1" max="60">
+              </div>
+              <div class="form-group">
+                <label for="cfg-sahur-audio">Sahur Uyari Sesi</label>
+                <select id="cfg-sahur-audio"><option value="">Yok</option></select>
+              </div>
+              <div class="form-group">
+                <label for="cfg-sahur-minutes">Sahur Uyari (dk once)</label>
+                <input type="number" id="cfg-sahur-minutes" value="30" min="1" max="60">
+              </div>
             </div>
           </fieldset>
 
@@ -294,5 +391,10 @@
 
   <script src="js/api.js"></script>
   <script src="js/app.js"></script>
+  <script>
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('/sw.js').catch(() => {});
+    }
+  </script>
 </body>
 </html>

@@ -4,10 +4,17 @@ import { GoogleCastPlayer, discoverDevices } from './cast.js';
 import { PrayerScheduler } from './scheduler.js';
 import { DiyanetFetcher } from './diyanet-fetcher.js';
 import { registerApiRoutes } from './api-routes.js';
+import { PrayerHistory } from './prayer-history.js';
 import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'fs';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
 import cron from 'node-cron';
+import dayjs from 'dayjs';
+import dayjsTimezone from 'dayjs/plugin/timezone.js';
+import dayjsUtc from 'dayjs/plugin/utc.js';
+
+dayjs.extend(dayjsUtc);
+dayjs.extend(dayjsTimezone);
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -85,6 +92,17 @@ class AdhanPlayer {
     this.rootDir = join(__dirname, '..');
     this.logBuffer = [];
     this.maxLogLines = 200;
+
+    // Silent mode (runtime state, not persisted)
+    this.silentMode = false;
+    this.silentModeTimer = null;
+    this.silentModeExpiry = null;
+
+    // Ramadan alert jobs
+    this.ramadanAlertJobs = [];
+
+    // Prayer history tracking
+    this.prayerHistory = new PrayerHistory();
 
     // Intercept console.log/warn/error to capture logs
     const originalLog = console.log;
@@ -290,8 +308,17 @@ class AdhanPlayer {
 
   /**
    * Get audio file for a specific prayer
+   * On Fridays, dhuhr uses friday.audioFile if configured
    */
   getAudioFileForPrayer(prayer) {
+    // Friday override for dhuhr
+    if (prayer === 'dhuhr') {
+      const tz = this.config.timezone || 'Europe/Vienna';
+      const now = dayjs().tz(tz);
+      if (now.day() === 5 && this.config.friday && this.config.friday.audioFile) {
+        return this.config.friday.audioFile;
+      }
+    }
     if (this.config.audioFiles && this.config.audioFiles[prayer]) {
       return this.config.audioFiles[prayer];
     }
@@ -326,11 +353,30 @@ class AdhanPlayer {
   async onPrayerTime(prayer, time) {
     console.log(`\n🕌 Time for ${prayer} prayer (${time})`);
 
+    // Silent mode check
+    if (this.silentMode) {
+      console.log(`🔇 Sessiz mod aktif, ${prayer} atlanıyor`);
+      if (this.prayerHistory) {
+        this.prayerHistory.record(prayer, time, 'skipped', 'silent_mode');
+      }
+      return;
+    }
+
     try {
       // Get per-prayer volume, fallback to global volume
-      const volume = (this.config.volumes && this.config.volumes[prayer] !== undefined)
+      let volume = (this.config.volumes && this.config.volumes[prayer] !== undefined)
         ? this.config.volumes[prayer]
         : this.config.volume;
+
+      // Friday volume override for dhuhr
+      if (prayer === 'dhuhr') {
+        const tz = this.config.timezone || 'Europe/Vienna';
+        const now = dayjs().tz(tz);
+        if (now.day() === 5 && this.config.friday && this.config.friday.volume !== undefined) {
+          volume = this.config.friday.volume;
+          console.log(`🕌 Cuma gunü - ozel ses ayari kullaniliyor`);
+        }
+      }
 
       // Create new cast player instance for this playback
       this.castPlayer = new GoogleCastPlayer({
@@ -349,13 +395,148 @@ class AdhanPlayer {
       await this.castPlayer.playAdhan(audioUrl, this.capitalizeFirst(prayer));
 
       console.log(`✅ Adhan playback completed for ${prayer}`);
+      if (this.prayerHistory) {
+        this.prayerHistory.record(prayer, time, 'played');
+      }
     } catch (error) {
       console.error(`❌ Error playing Adhan for ${prayer}:`, error.message);
+      if (this.prayerHistory) {
+        this.prayerHistory.record(prayer, time, 'failed', error.message);
+      }
     } finally {
       if (this.castPlayer) {
         this.castPlayer.cleanup();
         this.castPlayer = null;
       }
+    }
+  }
+
+  /**
+   * Enable silent mode
+   * @param {number|null} durationMinutes - Duration in minutes, null for indefinite
+   */
+  enableSilentMode(durationMinutes) {
+    if (this.silentModeTimer) {
+      clearTimeout(this.silentModeTimer);
+      this.silentModeTimer = null;
+    }
+
+    this.silentMode = true;
+
+    if (durationMinutes) {
+      this.silentModeExpiry = new Date(Date.now() + durationMinutes * 60 * 1000).toISOString();
+      this.silentModeTimer = setTimeout(() => {
+        this.disableSilentMode();
+        console.log('🔔 Sessiz mod suresi doldu, ses tekrar aktif');
+      }, durationMinutes * 60 * 1000);
+      console.log(`🔇 Sessiz mod aktif (${durationMinutes} dakika)`);
+    } else {
+      this.silentModeExpiry = null;
+      console.log('🔇 Sessiz mod aktif (suresiz)');
+    }
+  }
+
+  /**
+   * Disable silent mode
+   */
+  disableSilentMode() {
+    if (this.silentModeTimer) {
+      clearTimeout(this.silentModeTimer);
+      this.silentModeTimer = null;
+    }
+    this.silentMode = false;
+    this.silentModeExpiry = null;
+    console.log('🔔 Sessiz mod kapatildi');
+  }
+
+  /**
+   * Schedule Ramadan alerts (iftar & sahur warnings)
+   */
+  scheduleRamadanAlerts(todaysTimes) {
+    // Clear previous ramadan jobs
+    this.ramadanAlertJobs.forEach(job => job.stop());
+    this.ramadanAlertJobs = [];
+
+    const ramadan = this.config.ramadan;
+    if (!ramadan || !ramadan.enabled || !todaysTimes) return;
+
+    const tz = this.config.timezone || 'Europe/Vienna';
+    const now = dayjs().tz(tz);
+
+    // Iftar alert: maghrib - N minutes
+    if (ramadan.iftarAlertAudioFile && todaysTimes.maghrib) {
+      const [mH, mM] = todaysTimes.maghrib.split(':').map(Number);
+      const alertMin = ramadan.iftarAlertMinutesBefore || 15;
+      const totalMin = mH * 60 + mM - alertMin;
+      const alertH = Math.floor(totalMin / 60);
+      const alertM = totalMin % 60;
+
+      const alertTime = now.clone().hour(alertH).minute(alertM).second(0);
+      if (alertTime.isAfter(now)) {
+        const cronExpr = `${alertM} ${alertH} * * *`;
+        const job = cron.schedule(cronExpr, () => {
+          this.playRamadanAlert(ramadan.iftarAlertAudioFile, 'Iftar Uyarisi');
+        }, { scheduled: true, timezone: tz });
+        this.ramadanAlertJobs.push(job);
+        console.log(`  Ramazan iftar uyarisi: ${String(alertH).padStart(2,'0')}:${String(alertM).padStart(2,'0')} (maghrib - ${alertMin}dk)`);
+      }
+    }
+
+    // Sahur alert: fajr (adjusted) - N minutes
+    if (ramadan.sahurAlertAudioFile) {
+      let fajrH, fajrM;
+      if (todaysTimes.sunrise) {
+        const [sunH, sunM] = todaysTimes.sunrise.split(':').map(Number);
+        const fajrTotal = (sunH * 60 + sunM) - 40;
+        fajrH = Math.floor(fajrTotal / 60);
+        fajrM = fajrTotal % 60;
+      } else if (todaysTimes.fajr) {
+        [fajrH, fajrM] = todaysTimes.fajr.split(':').map(Number);
+      }
+
+      if (fajrH !== undefined) {
+        const alertMin = ramadan.sahurAlertMinutesBefore || 30;
+        const totalMin = fajrH * 60 + fajrM - alertMin;
+        const alertH = Math.floor(totalMin / 60);
+        const alertM = totalMin % 60;
+
+        const alertTime = now.clone().hour(alertH).minute(alertM).second(0);
+        if (alertTime.isAfter(now)) {
+          const cronExpr = `${alertM} ${alertH} * * *`;
+          const job = cron.schedule(cronExpr, () => {
+            this.playRamadanAlert(ramadan.sahurAlertAudioFile, 'Sahur Uyarisi');
+          }, { scheduled: true, timezone: tz });
+          this.ramadanAlertJobs.push(job);
+          console.log(`  Ramazan sahur uyarisi: ${String(alertH).padStart(2,'0')}:${String(alertM).padStart(2,'0')} (sabah - ${alertMin}dk)`);
+        }
+      }
+    }
+  }
+
+  /**
+   * Play a Ramadan alert audio on Cast device
+   */
+  async playRamadanAlert(audioFile, title) {
+    if (this.silentMode) {
+      console.log(`🔇 Sessiz mod aktif, ${title} atlanıyor`);
+      return;
+    }
+
+    console.log(`🌙 ${title}`);
+    let player = null;
+    try {
+      player = new GoogleCastPlayer({
+        deviceIp: this.config.deviceIp,
+        volume: this.config.volume,
+      });
+
+      const audioUrl = this.server.getAudioUrl(audioFile);
+      await player.playAdhan(audioUrl, title);
+      console.log(`✅ ${title} tamamlandi`);
+    } catch (error) {
+      console.error(`❌ ${title} hatasi:`, error.message);
+    } finally {
+      if (player) player.cleanup();
     }
   }
 
@@ -402,8 +583,44 @@ class AdhanPlayer {
    */
   getStatus() {
     const todaysTimes = this.parser ? this.parser.getTodaysPrayerTimes() : null;
-    const nextPrayer = this.scheduler ? this.scheduler.getNextPrayer() : null;
+    let nextPrayer = this.scheduler ? this.scheduler.getNextPrayer() : null;
     const schedulerStatus = this.scheduler ? this.scheduler.getStatus() : null;
+
+    // If no more prayers today, find tomorrow's first prayer
+    if (!nextPrayer && this.parser && this.config) {
+      const tz = this.config.timezone || 'Europe/Vienna';
+      const now = dayjs().tz(tz);
+      const tomorrowStr = now.add(1, 'day').format('YYYY-MM-DD');
+      const tomorrowTimes = this.parser.getPrayerTimes(tomorrowStr);
+
+      if (tomorrowTimes) {
+        const firstPrayer = (this.config.prayers || [])[0];
+        if (firstPrayer && tomorrowTimes[firstPrayer]) {
+          let hours, minutes;
+
+          // Apply fajr sunrise-40min adjustment
+          if (firstPrayer === 'fajr' && tomorrowTimes.sunrise) {
+            const [sunH, sunM] = tomorrowTimes.sunrise.split(':').map(Number);
+            const total = (sunH * 60 + sunM) - 40;
+            hours = Math.floor(total / 60);
+            minutes = total % 60;
+          } else {
+            [hours, minutes] = tomorrowTimes[firstPrayer].split(':').map(Number);
+          }
+
+          const effectiveTime = `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
+          const tomorrowPrayerTime = now.add(1, 'day').hour(hours).minute(minutes).second(0);
+          const minutesUntil = tomorrowPrayerTime.diff(now, 'minute');
+
+          nextPrayer = {
+            prayer: firstPrayer,
+            time: effectiveTime,
+            minutesUntil,
+            isTomorrow: true,
+          };
+        }
+      }
+    }
 
     return {
       isRunning: this.isRunning,
@@ -417,6 +634,8 @@ class AdhanPlayer {
         first: this.parser.getAvailableDates()[0],
         last: this.parser.getAvailableDates().slice(-1)[0],
       } : null,
+      silentMode: this.silentMode,
+      silentModeExpiry: this.silentModeExpiry,
     };
   }
 
@@ -439,6 +658,9 @@ class AdhanPlayer {
     }
 
     this.scheduler.scheduleTodaysPrayers(todaysTimes);
+
+    // Schedule Ramadan alerts if enabled
+    this.scheduleRamadanAlerts(todaysTimes);
 
     // Show next prayer
     const nextPrayer = this.scheduler.getNextPrayer();
@@ -514,6 +736,10 @@ class AdhanPlayer {
       this.monthlyFetchJob.stop();
       this.monthlyFetchJob = null;
     }
+
+    // Clear ramadan alert jobs
+    this.ramadanAlertJobs.forEach(job => job.stop());
+    this.ramadanAlertJobs = [];
 
     if (this.server) {
       await this.server.stop();
