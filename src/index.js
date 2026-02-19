@@ -362,51 +362,69 @@ class AdhanPlayer {
       return;
     }
 
-    try {
-      // Get per-prayer volume, fallback to global volume
-      let volume = (this.config.volumes && this.config.volumes[prayer] !== undefined)
-        ? this.config.volumes[prayer]
-        : this.config.volume;
+    // Get per-prayer volume, fallback to global volume
+    let volume = (this.config.volumes && this.config.volumes[prayer] !== undefined)
+      ? this.config.volumes[prayer]
+      : this.config.volume;
 
-      // Friday volume override for dhuhr
-      if (prayer === 'dhuhr') {
-        const tz = this.config.timezone || 'Europe/Vienna';
-        const now = dayjs().tz(tz);
-        if (now.day() === 5 && this.config.friday && this.config.friday.volume !== undefined) {
-          volume = this.config.friday.volume;
-          console.log(`🕌 Cuma gunü - ozel ses ayari kullaniliyor`);
+    // Friday volume override for dhuhr
+    if (prayer === 'dhuhr') {
+      const tz = this.config.timezone || 'Europe/Vienna';
+      const now = dayjs().tz(tz);
+      if (now.day() === 5 && this.config.friday && this.config.friday.volume !== undefined) {
+        volume = this.config.friday.volume;
+        console.log(`🕌 Cuma gunü - ozel ses ayari kullaniliyor`);
+      }
+    }
+
+    // Get audio file for this specific prayer
+    const audioFile = this.getAudioFileForPrayer(prayer);
+    const audioUrl = this.server.getAudioUrl(audioFile);
+    console.log(`Volume: ${Math.round(volume * 100)}%`);
+    console.log(`Audio file: ${audioFile}`);
+    console.log(`Audio URL: ${audioUrl}`);
+
+    // Retry logic: up to 3 attempts with 5 second delay
+    const maxRetries = 3;
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        if (attempt > 1) {
+          console.log(`🔄 Tekrar deneniyor (${attempt}/${maxRetries})...`);
+          await new Promise(r => setTimeout(r, 5000));
         }
-      }
 
-      // Create new cast player instance for this playback
-      this.castPlayer = new GoogleCastPlayer({
-        deviceIp: this.config.deviceIp,
-        volume,
-      });
-      console.log(`Volume: ${Math.round(volume * 100)}%`);
+        // Create fresh cast player instance for each attempt
+        this.castPlayer = new GoogleCastPlayer({
+          deviceIp: this.config.deviceIp,
+          volume,
+        });
 
-      // Get audio file for this specific prayer
-      const audioFile = this.getAudioFileForPrayer(prayer);
-      const audioUrl = this.server.getAudioUrl(audioFile);
-      console.log(`Audio file: ${audioFile}`);
-      console.log(`Audio URL: ${audioUrl}`);
+        // Play Adhan
+        await this.castPlayer.playAdhan(audioUrl, this.capitalizeFirst(prayer));
 
-      // Play Adhan
-      await this.castPlayer.playAdhan(audioUrl, this.capitalizeFirst(prayer));
+        console.log(`✅ Adhan playback completed for ${prayer}`);
+        if (this.prayerHistory) {
+          this.prayerHistory.record(prayer, time, 'played');
+        }
+        return; // Success, exit
+      } catch (error) {
+        console.error(`❌ Deneme ${attempt}/${maxRetries} basarisiz (${prayer}): ${error.message}`);
+        if (this.castPlayer) {
+          this.castPlayer.cleanup();
+          this.castPlayer = null;
+        }
 
-      console.log(`✅ Adhan playback completed for ${prayer}`);
-      if (this.prayerHistory) {
-        this.prayerHistory.record(prayer, time, 'played');
-      }
-    } catch (error) {
-      console.error(`❌ Error playing Adhan for ${prayer}:`, error.message);
-      if (this.prayerHistory) {
-        this.prayerHistory.record(prayer, time, 'failed', error.message);
-      }
-    } finally {
-      if (this.castPlayer) {
-        this.castPlayer.cleanup();
-        this.castPlayer = null;
+        if (attempt === maxRetries) {
+          console.error(`❌ ${maxRetries} deneme sonrasi ${prayer} calınamadı`);
+          if (this.prayerHistory) {
+            this.prayerHistory.record(prayer, time, 'failed', error.message);
+          }
+        }
+      } finally {
+        if (this.castPlayer) {
+          this.castPlayer.cleanup();
+          this.castPlayer = null;
+        }
       }
     }
   }

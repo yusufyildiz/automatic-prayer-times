@@ -43,9 +43,40 @@ export class GoogleCastPlayer {
   }
 
   /**
+   * Stop any currently running app on the Cast device
+   */
+  async stopCurrentApp() {
+    return new Promise((resolve) => {
+      if (!this.client) {
+        resolve();
+        return;
+      }
+
+      this.client.getSessions((err, sessions) => {
+        if (err || !sessions || sessions.length === 0) {
+          resolve();
+          return;
+        }
+
+        const session = sessions[0];
+        console.log(`Stopping active session: ${session.displayName || session.appId}`);
+        this.client.receiver.stop(session.sessionId, (stopErr) => {
+          if (stopErr) {
+            console.log('Could not stop session, continuing anyway');
+          }
+          resolve();
+        });
+      });
+    });
+  }
+
+  /**
    * Launch the media player app
    */
   async launchPlayer() {
+    // Stop any active app first to prevent CANCELLED errors
+    await this.stopCurrentApp();
+
     return new Promise((resolve, reject) => {
       if (!this.client) {
         reject(new Error('Not connected to device'));
