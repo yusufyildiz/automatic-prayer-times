@@ -310,13 +310,8 @@
     const iftarCountEl = document.getElementById('ramadan-iftar-countdown');
     iftarEl.textContent = iftarTime || '--:--';
 
-    // Sahur = sunrise - 40min (same as fajr scheduling)
-    let sahurTime = times.fajr;
-    if (times.sunrise) {
-      const [sunH, sunM] = times.sunrise.split(':').map(Number);
-      const total = (sunH * 60 + sunM) - 40;
-      sahurTime = `${String(Math.floor(total / 60)).padStart(2, '0')}:${String(total % 60).padStart(2, '0')}`;
-    }
+    // Sahur = imsak vakti (CSV fajr time)
+    const sahurTime = times.fajr;
     const sahurEl = document.getElementById('ramadan-sahur-time');
     const sahurCountEl = document.getElementById('ramadan-sahur-countdown');
     sahurEl.textContent = sahurTime || '--:--';
