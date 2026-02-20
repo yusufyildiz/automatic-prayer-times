@@ -182,13 +182,12 @@ export class DiyanetFetcher {
     if (m) return new Date(Date.UTC(parseInt(m[1]), parseInt(m[2]) - 1, parseInt(m[3])));
 
     // "DD Turkish_Month YYYY" or "DD Turkish_Month YYYY DayName" (e.g. "01 Ocak 2026 Perşembe")
-    for (const month of TURKISH_MONTHS) {
-      if (str.toLowerCase().includes(month.toLowerCase())) {
-        m = str.match(/(\d{1,2})\s+\S+\s+(\d{4})/);
-        if (m) {
-          const monthIdx = TURKISH_MONTHS.findIndex(mon => mon.toLowerCase() === month.toLowerCase());
-          return new Date(Date.UTC(parseInt(m[2]), monthIdx, parseInt(m[1])));
-        }
+    m = str.match(/(\d{1,2})\s+(\S+)\s+(\d{4})/);
+    if (m) {
+      const monthName = m[2].toLowerCase();
+      const monthIdx = TURKISH_MONTHS.findIndex(mon => mon.toLowerCase() === monthName);
+      if (monthIdx !== -1) {
+        return new Date(Date.UTC(parseInt(m[3]), monthIdx, parseInt(m[1])));
       }
     }
 
