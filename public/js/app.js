@@ -56,6 +56,7 @@
       currentStatus = await API.getStatus();
       renderStatus(currentStatus);
       renderSilentMode(currentStatus);
+      renderNowPlaying(currentStatus);
       renderTodayTimes(currentStatus);
       startCountdown(currentStatus.nextPrayer);
       renderTomorrowTimes();
@@ -262,6 +263,29 @@
       if (silentCountdownInterval) clearInterval(silentCountdownInterval);
     }
   }
+
+  // === NOW PLAYING ===
+  function renderNowPlaying(status) {
+    const card = document.getElementById('now-playing-card');
+    if (!card) return;
+
+    if (status.currentlyPlaying) {
+      const prayerName = PRAYER_NAMES[status.currentlyPlaying] || status.currentlyPlaying;
+      document.getElementById('now-playing-text').textContent = `${prayerName} ezani caliniyor...`;
+      card.style.display = '';
+    } else {
+      card.style.display = 'none';
+    }
+  }
+
+  document.getElementById('btn-stop-adhan').addEventListener('click', async () => {
+    try {
+      await API.stopAdhan();
+      loadHome();
+    } catch (e) {
+      console.error('Stop adhan failed:', e);
+    }
+  });
 
   // Silent mode off button
   document.getElementById('btn-silent-off').addEventListener('click', async () => {

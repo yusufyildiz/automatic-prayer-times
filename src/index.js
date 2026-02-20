@@ -88,6 +88,7 @@ class AdhanPlayer {
     this.fetcher = null;
     this.yearlyFetchJobs = [];
     this.castPlayer = null;
+    this.currentlyPlaying = null;
     this.isRunning = false;
     this.rootDir = join(__dirname, '..');
     this.logBuffer = [];
@@ -395,8 +396,15 @@ class AdhanPlayer {
     console.log(`Audio URL: ${audioUrl}`);
 
     // Retry logic: up to 3 attempts with 5 second delay
+    this.currentlyPlaying = prayer;
     const maxRetries = 3;
     for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      // Check if manually stopped between retries
+      if (!this.currentlyPlaying) {
+        console.log(`⏹️ ${prayer} calma durduruldu`);
+        return;
+      }
+
       try {
         if (attempt > 1) {
           console.log(`🔄 Tekrar deneniyor (${attempt}/${maxRetries})...`);
@@ -416,12 +424,19 @@ class AdhanPlayer {
         if (this.prayerHistory) {
           this.prayerHistory.record(prayer, time, 'played');
         }
+        this.currentlyPlaying = null;
         return; // Success, exit
       } catch (error) {
         console.error(`❌ Deneme ${attempt}/${maxRetries} basarisiz (${prayer}): ${error.message}`);
         if (this.castPlayer) {
           this.castPlayer.cleanup();
           this.castPlayer = null;
+        }
+
+        // Check if manually stopped
+        if (!this.currentlyPlaying) {
+          console.log(`⏹️ ${prayer} calma durduruldu`);
+          return;
         }
 
         if (attempt === maxRetries) {
@@ -437,6 +452,7 @@ class AdhanPlayer {
         }
       }
     }
+    this.currentlyPlaying = null;
   }
 
   /**
@@ -475,6 +491,24 @@ class AdhanPlayer {
     this.silentMode = false;
     this.silentModeExpiry = null;
     console.log('🔔 Sessiz mod kapatildi');
+  }
+
+  /**
+   * Stop currently playing adhan
+   */
+  async stopAdhan() {
+    const wasPlaying = this.currentlyPlaying;
+    this.currentlyPlaying = null;
+    if (this.castPlayer) {
+      try {
+        await this.castPlayer.stop();
+      } catch (e) { /* ignore */ }
+      this.castPlayer.cleanup();
+      this.castPlayer = null;
+    }
+    if (wasPlaying) {
+      console.log(`⏹️ ${wasPlaying} ezani durduruldu`);
+    }
   }
 
   /**
@@ -667,6 +701,7 @@ class AdhanPlayer {
       } : null,
       silentMode: this.silentMode,
       silentModeExpiry: this.silentModeExpiry,
+      currentlyPlaying: this.currentlyPlaying,
     };
   }
 

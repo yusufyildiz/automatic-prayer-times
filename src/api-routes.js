@@ -474,6 +474,16 @@ export function registerApiRoutes(app, adhanPlayer) {
     }
   });
 
+  // ===== STOP ADHAN =====
+  app.post('/api/actions/stop-adhan', async (req, res) => {
+    try {
+      await adhanPlayer.stopAdhan();
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
   // ===== SYSTEM TOGGLE =====
   app.post('/api/actions/toggle-system', (req, res) => {
     try {

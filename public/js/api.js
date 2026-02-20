@@ -128,6 +128,10 @@ const API = {
     });
   },
 
+  stopAdhan() {
+    return this.request('/api/actions/stop-adhan', { method: 'POST' });
+  },
+
   getHistoryStats() {
     return this.request('/api/history/stats');
   },
