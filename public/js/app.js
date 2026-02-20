@@ -40,6 +40,16 @@
   // === HOME TAB ===
   let silentCountdownInterval = null;
   let ramadanCountdownInterval = null;
+  let homeRefreshInterval = null;
+
+  function startHomeAutoRefresh() {
+    if (homeRefreshInterval) clearInterval(homeRefreshInterval);
+    homeRefreshInterval = setInterval(() => {
+      if (document.getElementById('tab-home').classList.contains('active')) {
+        loadHome();
+      }
+    }, 30000); // 30 seconds
+  }
 
   async function loadHome() {
     try {
@@ -534,6 +544,14 @@
       fridayVolDisplay.textContent = `${fvRound}%`;
     }
 
+    // Fajr offset
+    const fajrOffsetDisplay = document.getElementById('fajr-offset-display');
+    if (fajrOffsetDisplay) {
+      const offset = config.fajrOffset ?? 40;
+      fajrOffsetDisplay.dataset.value = offset;
+      fajrOffsetDisplay.textContent = `${offset} dk`;
+    }
+
     // Ramadan settings — always populate audio selects
     const ramadanEnabled = document.getElementById('cfg-ramadan-enabled');
     const ramadanSub = document.getElementById('ramadan-sub-settings');
@@ -603,6 +621,25 @@
       if (val > 100) val = 100;
       fridayVolDisplay.dataset.value = val;
       fridayVolDisplay.textContent = `${val}%`;
+    });
+  }
+
+  // Fajr offset stepper
+  const fajrOffMinus = document.getElementById('fajr-offset-minus');
+  const fajrOffPlus = document.getElementById('fajr-offset-plus');
+  const fajrOffDisplay = document.getElementById('fajr-offset-display');
+  if (fajrOffMinus && fajrOffPlus && fajrOffDisplay) {
+    fajrOffMinus.addEventListener('click', () => {
+      let val = parseInt(fajrOffDisplay.dataset.value) - 5;
+      if (val < 0) val = 0;
+      fajrOffDisplay.dataset.value = val;
+      fajrOffDisplay.textContent = `${val} dk`;
+    });
+    fajrOffPlus.addEventListener('click', () => {
+      let val = parseInt(fajrOffDisplay.dataset.value) + 5;
+      if (val > 120) val = 120;
+      fajrOffDisplay.dataset.value = val;
+      fajrOffDisplay.textContent = `${val} dk`;
     });
   }
 
@@ -680,6 +717,7 @@
       volumes,
       friday,
       ramadan: ramadan || currentStatus?.config?.ramadan,
+      fajrOffset: fajrOffDisplay ? parseInt(fajrOffDisplay.dataset.value) : 40,
       csvFile: currentStatus?.config?.csvFile || 'prayer-times.csv',
       diyanetLocationId: currentStatus?.config?.diyanetLocationId || 11618,
       testConnection: document.getElementById('cfg-testConnection').checked,
@@ -1087,4 +1125,5 @@
 
   // === INIT ===
   loadHome();
+  startHomeAutoRefresh();
 })();

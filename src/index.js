@@ -200,6 +200,7 @@ class AdhanPlayer {
     this.scheduler = new PrayerScheduler({
       timezone: this.config.timezone,
       prayers: this.config.prayers,
+      fajrOffset: this.config.fajrOffset ?? 40,
       onPrayerTime: (prayer, time) => this.onPrayerTime(prayer, time),
     });
 
@@ -512,9 +513,10 @@ class AdhanPlayer {
     // Sahur alert: fajr (adjusted) - N minutes
     if (ramadan.sahurAlertAudioFile) {
       let fajrH, fajrM;
-      if (todaysTimes.sunrise) {
+      const fajrOff = this.config.fajrOffset ?? 40;
+      if (todaysTimes.sunrise && fajrOff > 0) {
         const [sunH, sunM] = todaysTimes.sunrise.split(':').map(Number);
-        const fajrTotal = (sunH * 60 + sunM) - 40;
+        const fajrTotal = (sunH * 60 + sunM) - fajrOff;
         fajrH = Math.floor(fajrTotal / 60);
         fajrM = fajrTotal % 60;
       } else if (todaysTimes.fajr) {
@@ -596,6 +598,7 @@ class AdhanPlayer {
     this.scheduler = new PrayerScheduler({
       timezone: this.config.timezone,
       prayers: this.config.prayers,
+      fajrOffset: this.config.fajrOffset ?? 40,
       onPrayerTime: (prayer, time) => this.onPrayerTime(prayer, time),
     });
 
@@ -625,10 +628,11 @@ class AdhanPlayer {
         if (firstPrayer && tomorrowTimes[firstPrayer]) {
           let hours, minutes;
 
-          // Apply fajr sunrise-40min adjustment
-          if (firstPrayer === 'fajr' && tomorrowTimes.sunrise) {
+          // Apply fajr sunrise offset adjustment
+          const fajrOff = this.config.fajrOffset ?? 40;
+          if (firstPrayer === 'fajr' && tomorrowTimes.sunrise && fajrOff > 0) {
             const [sunH, sunM] = tomorrowTimes.sunrise.split(':').map(Number);
-            const total = (sunH * 60 + sunM) - 40;
+            const total = (sunH * 60 + sunM) - fajrOff;
             hours = Math.floor(total / 60);
             minutes = total % 60;
           } else {

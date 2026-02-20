@@ -1085,6 +1085,19 @@ fieldset legend {
   margin-top: 0.25rem;
 }
 
+.fajr-offset-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 0.35rem;
+}
+
+.fajr-offset-label {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  font-weight: 500;
+}
+
 /* Test prayer button */
 .btn-test-prayer {
   width: 36px;

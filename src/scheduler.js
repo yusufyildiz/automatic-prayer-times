@@ -14,6 +14,7 @@ export class PrayerScheduler {
   constructor(config = {}) {
     this.timezone = config.timezone || 'Europe/Vienna';
     this.prayers = config.prayers || ['fajr', 'dhuhr', 'asr', 'maghrib', 'isha'];
+    this.fajrOffset = config.fajrOffset ?? 40;
     this.onPrayerTime = config.onPrayerTime || (() => {});
     this.scheduledJobs = new Map();
     this.midnightJob = null;
@@ -47,13 +48,13 @@ export class PrayerScheduler {
       // Parse the time string (HH:MM format)
       let [hours, minutes] = timeStr.split(':').map(Number);
 
-      // For fajr: schedule at sunrise - 40 minutes instead of CSV fajr time
-      if (prayer === 'fajr' && prayerTimes.sunrise) {
+      // For fajr: schedule at sunrise - offset minutes instead of CSV fajr time
+      if (prayer === 'fajr' && prayerTimes.sunrise && this.fajrOffset > 0) {
         const [sunH, sunM] = prayerTimes.sunrise.split(':').map(Number);
-        const fajrTotal = (sunH * 60 + sunM) - 40;
+        const fajrTotal = (sunH * 60 + sunM) - this.fajrOffset;
         hours = Math.floor(fajrTotal / 60);
         minutes = fajrTotal % 60;
-        console.log(`  ${prayer}: CSV time ${timeStr}, adjusted to ${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')} (sunrise ${prayerTimes.sunrise} - 40min)`);
+        console.log(`  ${prayer}: CSV time ${timeStr}, adjusted to ${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')} (sunrise ${prayerTimes.sunrise} - ${this.fajrOffset}min)`);
       }
 
       // Create a datetime for today at the prayer time
