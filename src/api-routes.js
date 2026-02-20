@@ -86,6 +86,15 @@ export function registerApiRoutes(app, adhanPlayer) {
     }
   });
 
+  app.get('/api/prayer-times/all', (req, res) => {
+    try {
+      const all = adhanPlayer.parser.getAllPrayerTimes();
+      res.json({ prayerTimes: all });
+    } catch (error) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
   app.get('/api/prayer-times/:date', (req, res) => {
     try {
       const times = adhanPlayer.parser.getPrayerTimes(req.params.date);

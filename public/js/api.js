@@ -154,6 +154,10 @@ const API = {
     return this.request('/api/actions/test-prayer/status');
   },
 
+  getAllPrayerTimes() {
+    return this.request('/api/prayer-times/all');
+  },
+
   async uploadExcel(file) {
     const formData = new FormData();
     formData.append('file', file);

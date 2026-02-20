@@ -203,6 +203,17 @@ export class PrayerTimesParser {
   }
 
   /**
+   * Get all prayer times as an object keyed by date
+   */
+  getAllPrayerTimes() {
+    const result = {};
+    for (const [date, times] of this.prayerTimesMap) {
+      result[date] = times;
+    }
+    return result;
+  }
+
+  /**
    * Check if data is available for a specific date
    */
   hasDataForDate(date) {

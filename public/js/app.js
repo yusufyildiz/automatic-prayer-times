@@ -1003,6 +1003,86 @@
     }
   };
 
+  // === YEARLY TIMES MODAL ===
+  const MONTH_NAMES_TR = ['Ocak','Subat','Mart','Nisan','Mayis','Haziran','Temmuz','Agustos','Eylul','Ekim','Kasim','Aralik'];
+
+  document.getElementById('btn-show-yearly').addEventListener('click', async () => {
+    const modal = document.getElementById('yearly-modal');
+    const body = document.getElementById('yearly-modal-body');
+    const nav = document.getElementById('yearly-month-nav');
+    body.innerHTML = '<div class="prayer-empty">Yukleniyor...</div>';
+    nav.innerHTML = '';
+    modal.style.display = 'flex';
+
+    try {
+      const data = await API.getAllPrayerTimes();
+      const allTimes = data.prayerTimes;
+      const dates = Object.keys(allTimes).sort();
+      if (dates.length === 0) {
+        body.innerHTML = '<div class="prayer-empty">Kayitli vakit verisi yok</div>';
+        return;
+      }
+
+      // Group by month
+      const months = {};
+      for (const date of dates) {
+        const key = date.slice(0, 7); // YYYY-MM
+        if (!months[key]) months[key] = [];
+        months[key].push({ date, ...allTimes[date] });
+      }
+
+      const monthKeys = Object.keys(months).sort();
+      const today = new Date();
+      const todayStr = today.getFullYear() + '-' + String(today.getMonth() + 1).padStart(2, '0') + '-' + String(today.getDate()).padStart(2, '0');
+      const currentMonthKey = todayStr.slice(0, 7);
+
+      // Build month nav
+      nav.innerHTML = monthKeys.map(key => {
+        const [y, m] = key.split('-');
+        const label = MONTH_NAMES_TR[parseInt(m) - 1] + ' ' + y;
+        return `<button class="month-btn${key === currentMonthKey ? ' active' : ''}" data-month="${key}">${label}</button>`;
+      }).join('');
+
+      function renderMonth(monthKey) {
+        const days = months[monthKey];
+        if (!days) return;
+
+        nav.querySelectorAll('.month-btn').forEach(b => b.classList.toggle('active', b.dataset.month === monthKey));
+
+        let html = '<table class="monthly-table"><thead><tr><th>Gun</th><th>Imsak</th><th>Gunes</th><th>Ogle</th><th>Ikindi</th><th>Aksam</th><th>Yatsi</th></tr></thead><tbody>';
+        for (const d of days) {
+          const dayNum = parseInt(d.date.slice(8));
+          const isToday = d.date === todayStr;
+          html += `<tr class="${isToday ? 'today-row' : ''}"><td>${dayNum}</td><td>${d.fajr || '-'}</td><td>${d.sunrise || '-'}</td><td>${d.dhuhr || '-'}</td><td>${d.asr || '-'}</td><td>${d.maghrib || '-'}</td><td>${d.isha || '-'}</td></tr>`;
+        }
+        html += '</tbody></table>';
+        body.innerHTML = html;
+      }
+
+      // Nav click
+      nav.addEventListener('click', (e) => {
+        if (e.target.classList.contains('month-btn')) {
+          renderMonth(e.target.dataset.month);
+        }
+      });
+
+      // Show current month or first
+      renderMonth(months[currentMonthKey] ? currentMonthKey : monthKeys[0]);
+    } catch (e) {
+      body.innerHTML = `<div class="prayer-empty">Hata: ${e.message}</div>`;
+    }
+  });
+
+  // Close modal
+  document.getElementById('btn-close-modal').addEventListener('click', () => {
+    document.getElementById('yearly-modal').style.display = 'none';
+  });
+  document.getElementById('yearly-modal').addEventListener('click', (e) => {
+    if (e.target === e.currentTarget) {
+      e.currentTarget.style.display = 'none';
+    }
+  });
+
   // === LOGS TAB ===
   async function loadLogs() {
     try {

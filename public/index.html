@@ -390,7 +390,25 @@
           <tbody id="csv-files-body"></tbody>
         </table>
       </div>
+
+      <div class="card">
+        <h2>Yillik Namaz Vakitleri</h2>
+        <p class="upload-hint" style="margin-bottom:0.75rem">Sistemde kayitli tum namaz vakitlerini ay ay goruntuleyin</p>
+        <button id="btn-show-yearly" class="btn">Vakitleri Goruntule</button>
+      </div>
     </section>
+
+    <!-- YEARLY TIMES MODAL -->
+    <div id="yearly-modal" class="modal-overlay" style="display:none">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h2>Yillik Namaz Vakitleri</h2>
+          <button id="btn-close-modal" class="modal-close">&times;</button>
+        </div>
+        <div class="modal-nav" id="yearly-month-nav"></div>
+        <div class="modal-body" id="yearly-modal-body"></div>
+      </div>
+    </div>
 
     <!-- LOGS TAB -->
     <section id="tab-logs" class="tab-content">
