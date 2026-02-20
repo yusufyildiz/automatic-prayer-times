@@ -221,7 +221,7 @@
   // === SILENT MODE ===
   function renderSilentMode(status) {
     const card = document.getElementById('silent-mode-card');
-    const toggleBtn = document.getElementById('btn-silent-toggle');
+    const offBtn = document.getElementById('btn-silent-off');
     const activeDiv = document.getElementById('silent-mode-active');
     const optionsDiv = document.getElementById('silent-mode-options');
 
@@ -229,9 +229,7 @@
 
     if (status.silentMode) {
       card.classList.add('silent-active');
-      toggleBtn.textContent = 'Sesi Ac';
-      toggleBtn.classList.remove('btn-secondary');
-      toggleBtn.classList.add('btn-danger');
+      offBtn.style.display = '';
       activeDiv.style.display = 'block';
       optionsDiv.style.display = 'none';
 
@@ -258,25 +256,17 @@
       }
     } else {
       card.classList.remove('silent-active');
-      toggleBtn.textContent = 'Sessize Al';
-      toggleBtn.classList.add('btn-secondary');
-      toggleBtn.classList.remove('btn-danger');
+      offBtn.style.display = 'none';
       activeDiv.style.display = 'none';
       optionsDiv.style.display = 'flex';
       if (silentCountdownInterval) clearInterval(silentCountdownInterval);
     }
   }
 
-  // Silent mode toggle button
-  document.getElementById('btn-silent-toggle').addEventListener('click', async () => {
-    if (currentStatus && currentStatus.silentMode) {
-      await API.setSilentMode(false);
-      loadHome();
-    } else {
-      // Default: 60 minutes
-      await API.setSilentMode(true, 60);
-      loadHome();
-    }
+  // Silent mode off button
+  document.getElementById('btn-silent-off').addEventListener('click', async () => {
+    await API.setSilentMode(false);
+    loadHome();
   });
 
   // Silent mode duration buttons
