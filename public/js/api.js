@@ -153,4 +153,16 @@ const API = {
   getTestPrayerStatus() {
     return this.request('/api/actions/test-prayer/status');
   },
+
+  async uploadExcel(file) {
+    const formData = new FormData();
+    formData.append('file', file);
+    const res = await fetch('/api/actions/upload-excel', {
+      method: 'POST',
+      body: formData,
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Upload failed');
+    return data;
+  },
 };

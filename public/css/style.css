@@ -1122,9 +1122,15 @@ fieldset legend {
   transition: all 0.3s ease;
 }
 
-.upload-area:hover {
+.upload-area:hover,
+.upload-area.drag-over {
   border-color: rgba(212, 163, 75, 0.2);
   background: rgba(212, 163, 75, 0.04);
+}
+
+.upload-area.drag-over {
+  border-color: var(--gold);
+  background: rgba(212, 163, 75, 0.08);
 }
 
 .upload-hint {

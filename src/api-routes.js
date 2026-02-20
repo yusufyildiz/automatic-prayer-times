@@ -40,6 +40,16 @@ export function registerApiRoutes(app, adhanPlayer) {
     limits: { fileSize: 50 * 1024 * 1024 }, // 50MB
   });
 
+  // Multer config for Excel uploads (memory storage — parse in-memory)
+  const excelUpload = multer({
+    storage: multer.memoryStorage(),
+    fileFilter: (req, file, cb) => {
+      const ext = file.originalname.toLowerCase().slice(file.originalname.lastIndexOf('.'));
+      cb(null, ['.xlsx', '.xls'].includes(ext));
+    },
+    limits: { fileSize: 20 * 1024 * 1024 }, // 20MB
+  });
+
   // Multer config for CSV uploads
   const csvUpload = multer({
     storage: multer.diskStorage({
@@ -338,6 +348,25 @@ export function registerApiRoutes(app, adhanPlayer) {
       res.json({ success: true, message: 'Vakit verileri basariyla guncellendi' });
     } catch (error) {
       res.json({ success: false, message: `Veri cekme basarisiz: ${error.message}` });
+    }
+  });
+
+  // ===== UPLOAD EXCEL =====
+  app.post('/api/actions/upload-excel', excelUpload.single('file'), async (req, res) => {
+    if (!req.file) {
+      return res.status(400).json({ error: 'No valid Excel file provided. Allowed: .xlsx, .xls' });
+    }
+    try {
+      const result = adhanPlayer.fetcher.parseAndSaveExcel(req.file.buffer);
+      await adhanPlayer.parser.reload();
+      adhanPlayer.scheduleTodaysPrayers();
+      res.json({
+        success: true,
+        message: `${result.totalDays} gunluk vakit verisi yuklendi (${result.firstDate} — ${result.lastDate})`,
+        ...result,
+      });
+    } catch (error) {
+      res.status(400).json({ success: false, error: `Excel parse hatasi: ${error.message}` });
     }
   });
 

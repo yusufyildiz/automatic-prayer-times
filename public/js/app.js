@@ -862,6 +862,64 @@
     }
   });
 
+  // === EXCEL UPLOAD ===
+  document.getElementById('btn-download-diyanet').addEventListener('click', () => {
+    const locationId = document.getElementById('cfg-diyanetLocationId').value || 11618;
+    const year = new Date().getFullYear();
+    window.open(`https://namazvakitleri.diyanet.gov.tr/tr-TR/home/PrayerTimeYearlyExcel?locationId=${locationId}&year=${year}`, '_blank');
+  });
+
+  document.getElementById('btn-upload-excel').addEventListener('click', () => {
+    document.getElementById('excel-file-input').click();
+  });
+
+  document.getElementById('excel-file-input').addEventListener('change', async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    await handleExcelUpload(file);
+    e.target.value = '';
+  });
+
+  // Drag & drop for Excel
+  const excelDropArea = document.getElementById('excel-drop-area');
+  if (excelDropArea) {
+    excelDropArea.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      excelDropArea.classList.add('drag-over');
+    });
+    excelDropArea.addEventListener('dragleave', () => {
+      excelDropArea.classList.remove('drag-over');
+    });
+    excelDropArea.addEventListener('drop', async (e) => {
+      e.preventDefault();
+      excelDropArea.classList.remove('drag-over');
+      const file = e.dataTransfer.files[0];
+      if (file && /\.(xlsx|xls)$/i.test(file.name)) {
+        await handleExcelUpload(file);
+      } else {
+        const statusEl = document.getElementById('excel-upload-status');
+        statusEl.className = 'upload-status error';
+        statusEl.textContent = 'Sadece .xlsx veya .xls dosyalari kabul edilir';
+      }
+    });
+  }
+
+  async function handleExcelUpload(file) {
+    const statusEl = document.getElementById('excel-upload-status');
+    statusEl.className = 'upload-status';
+    statusEl.textContent = 'Yukleniyor ve isleniyor...';
+    try {
+      const res = await API.uploadExcel(file);
+      statusEl.className = 'upload-status success';
+      statusEl.textContent = res.message;
+      loadCsvFiles();
+      loadHome();
+    } catch (err) {
+      statusEl.className = 'upload-status error';
+      statusEl.textContent = `Hata: ${err.message}`;
+    }
+  }
+
   function renderCsvFiles(files) {
     const tbody = document.getElementById('csv-files-body');
     if (files.length === 0) {

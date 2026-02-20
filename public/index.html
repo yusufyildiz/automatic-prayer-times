@@ -348,6 +348,20 @@
       </div>
 
       <div class="card">
+        <h2>Diyanet Yillik Excel</h2>
+        <p class="upload-hint" style="margin-bottom:0.75rem">Diyanet sitesinden yillik Excel dosyasini indirip yukleyin (365 gunluk veri)</p>
+        <div class="card-actions" style="margin-bottom:0.75rem">
+          <button id="btn-download-diyanet" class="btn btn-small btn-secondary">Diyanet'ten Indir</button>
+        </div>
+        <div class="upload-area" id="excel-drop-area">
+          <input type="file" id="excel-file-input" accept=".xlsx,.xls" hidden>
+          <button id="btn-upload-excel" class="btn">Excel Dosyasi Yukle</button>
+          <span class="upload-hint">XLSX, XLS (max 20MB)</span>
+        </div>
+        <div id="excel-upload-status" class="upload-status"></div>
+      </div>
+
+      <div class="card">
         <h2>Vakit Dosyalari</h2>
         <div class="upload-area">
           <input type="file" id="csv-file-input" accept=".csv" hidden>

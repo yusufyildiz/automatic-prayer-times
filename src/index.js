@@ -86,7 +86,7 @@ class AdhanPlayer {
     this.server = null;
     this.scheduler = null;
     this.fetcher = null;
-    this.monthlyFetchJob = null;
+    this.yearlyFetchJobs = [];
     this.castPlayer = null;
     this.isRunning = false;
     this.rootDir = join(__dirname, '..');
@@ -247,30 +247,39 @@ class AdhanPlayer {
   }
 
   /**
-   * Schedule monthly prayer times fetch (runs on the 25th at 03:00)
+   * Schedule yearly prayer times fetch
+   * - Jan 1 at 03:00 — fetch current year's data
+   * - Dec 15 at 03:00 — pre-fetch next year's data
    */
-  scheduleMonthlyFetch() {
-    this.monthlyFetchJob = cron.schedule(
-      '0 3 25 * *',
-      async () => {
-        console.log('\n📅 Monthly prayer times refresh - fetching from Diyanet...');
-        try {
-          await this.fetcher.fetchAndSave();
-          // Reload parser with new data
-          await this.parser.reload();
-          // Re-schedule today's prayers
-          this.scheduleTodaysPrayers();
-          console.log('✅ Monthly prayer times update complete');
-        } catch (error) {
-          console.error('❌ Monthly fetch failed:', error.message);
-        }
-      },
-      {
-        scheduled: true,
-        timezone: this.config.timezone,
+  scheduleYearlyFetch() {
+    const fetchHandler = async (label) => {
+      console.log(`\n📅 ${label} - fetching from Diyanet...`);
+      try {
+        await this.fetcher.fetchAndSave();
+        await this.parser.reload();
+        this.scheduleTodaysPrayers();
+        console.log(`✅ ${label} complete`);
+      } catch (error) {
+        console.error(`❌ ${label} failed:`, error.message);
       }
-    );
-    console.log('Scheduled monthly Diyanet fetch (25th of each month at 03:00)');
+    };
+
+    // Jan 1 at 03:00 — refresh current year
+    this.yearlyFetchJobs = [];
+    this.yearlyFetchJobs.push(cron.schedule(
+      '0 3 1 1 *',
+      () => fetchHandler('Yearly prayer times refresh (Jan 1)'),
+      { scheduled: true, timezone: this.config.timezone }
+    ));
+
+    // Dec 15 at 03:00 — pre-fetch next year
+    this.yearlyFetchJobs.push(cron.schedule(
+      '0 3 15 12 *',
+      () => fetchHandler('Next year prayer times pre-fetch (Dec 15)'),
+      { scheduled: true, timezone: this.config.timezone }
+    ));
+
+    console.log('Scheduled yearly Diyanet fetch (Jan 1 + Dec 15 at 03:00)');
   }
 
   /**
@@ -704,8 +713,8 @@ class AdhanPlayer {
         this.scheduleTodaysPrayers();
       });
 
-      // Schedule monthly Diyanet fetch
-      this.scheduleMonthlyFetch();
+      // Schedule yearly Diyanet fetch
+      this.scheduleYearlyFetch();
 
       this.isRunning = true;
 
@@ -750,9 +759,9 @@ class AdhanPlayer {
       this.scheduler.stop();
     }
 
-    if (this.monthlyFetchJob) {
-      this.monthlyFetchJob.stop();
-      this.monthlyFetchJob = null;
+    if (this.yearlyFetchJobs) {
+      this.yearlyFetchJobs.forEach(job => job.stop());
+      this.yearlyFetchJobs = [];
     }
 
     // Clear ramadan alert jobs
