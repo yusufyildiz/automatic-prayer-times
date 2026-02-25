@@ -1133,8 +1133,10 @@ fieldset legend {
 .fajr-offset-row {
   display: flex;
   align-items: center;
+  justify-content: space-between;
   gap: 0.5rem;
   margin-top: 0.35rem;
+  flex-wrap: nowrap;
 }
 
 /* Dua settings */
@@ -1175,6 +1177,7 @@ fieldset legend {
   font-size: 0.75rem;
   color: var(--text-muted);
   font-weight: 500;
+  white-space: nowrap;
 }
 
 /* Test prayer button */
