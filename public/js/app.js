@@ -19,6 +19,20 @@
   let activeTestPrayer = null;
   let testPollInterval = null;
 
+  // === PWA: OFFLINE/ONLINE DETECTION ===
+  function updateOnlineStatus() {
+    const banner = document.getElementById('offline-banner');
+    if (!banner) return;
+    if (navigator.onLine) {
+      banner.classList.remove('visible');
+    } else {
+      banner.classList.add('visible');
+    }
+  }
+  window.addEventListener('online', updateOnlineStatus);
+  window.addEventListener('offline', updateOnlineStatus);
+  updateOnlineStatus();
+
   // === TAB NAVIGATION ===
   document.querySelectorAll('.tab-btn').forEach(btn => {
     btn.addEventListener('click', () => {
@@ -507,6 +521,35 @@
       });
     });
 
+    // Dua file selects
+    ['fajr', 'dhuhr', 'asr', 'maghrib', 'isha'].forEach(p => {
+      const sel = document.getElementById(`cfg-dua-${p}`);
+      if (!sel) return;
+      sel.innerHTML = '<option value="">Yok</option>';
+      audioFiles.forEach(f => {
+        const opt = document.createElement('option');
+        opt.value = f.name;
+        opt.textContent = f.name;
+        sel.appendChild(opt);
+      });
+      if (config.duaFiles && config.duaFiles[p]) sel.value = config.duaFiles[p];
+    });
+
+    // Dua volume steppers
+    ['fajr', 'dhuhr', 'asr', 'maghrib', 'isha'].forEach(p => {
+      const display = document.getElementById(`dua-vol-display-${p}`);
+      if (!display) return;
+      const ezanVol = config.volumes && config.volumes[p] !== undefined
+        ? Math.round(config.volumes[p] * 100)
+        : defaultVol;
+      const raw = config.duaVolumes && config.duaVolumes[p] !== undefined
+        ? Math.round(config.duaVolumes[p] * 100)
+        : ezanVol;
+      const val = Math.round(raw / 5) * 5;
+      display.dataset.value = val;
+      display.textContent = `${val}%`;
+    });
+
     // Set current values
     document.getElementById('cfg-adhanAudioFile').value = config.adhanAudioFile || '';
 
@@ -633,6 +676,27 @@
     });
   }
 
+  // Dua volume steppers
+  ['fajr', 'dhuhr', 'asr', 'maghrib', 'isha'].forEach(p => {
+    const minus = document.getElementById(`dua-vol-minus-${p}`);
+    const plus = document.getElementById(`dua-vol-plus-${p}`);
+    const display = document.getElementById(`dua-vol-display-${p}`);
+    if (minus && plus && display) {
+      minus.addEventListener('click', () => {
+        let val = parseInt(display.dataset.value) - 5;
+        if (val < 0) val = 0;
+        display.dataset.value = val;
+        display.textContent = `${val}%`;
+      });
+      plus.addEventListener('click', () => {
+        let val = parseInt(display.dataset.value) + 5;
+        if (val > 100) val = 100;
+        display.dataset.value = val;
+        display.textContent = `${val}%`;
+      });
+    }
+  });
+
   // Fajr offset stepper
   const fajrOffMinus = document.getElementById('fajr-offset-minus');
   const fajrOffPlus = document.getElementById('fajr-offset-plus');
@@ -700,6 +764,16 @@
       };
     }
 
+    // Dua settings
+    const duaFiles = {};
+    const duaVolumes = {};
+    ['fajr', 'dhuhr', 'asr', 'maghrib', 'isha'].forEach(p => {
+      const val = document.getElementById(`cfg-dua-${p}`)?.value;
+      if (val) duaFiles[p] = val;
+      const duaVolDisplay = document.getElementById(`dua-vol-display-${p}`);
+      if (duaVolDisplay) duaVolumes[p] = parseInt(duaVolDisplay.dataset.value) / 100;
+    });
+
     // Ramadan settings
     const ramadanEnabled = document.getElementById('cfg-ramadan-enabled');
     let ramadan = undefined;
@@ -724,6 +798,8 @@
       adhanAudioFile: document.getElementById('cfg-adhanAudioFile').value,
       audioFiles: Object.keys(audioFiles).length > 0 ? audioFiles : undefined,
       volumes,
+      duaFiles: Object.keys(duaFiles).length > 0 ? duaFiles : undefined,
+      duaVolumes,
       friday,
       ramadan: ramadan || currentStatus?.config?.ramadan,
       fajrOffset: fajrOffDisplay ? parseInt(fajrOffDisplay.dataset.value) : 40,
@@ -1213,6 +1289,24 @@
   }, 3000);
 
   // === INIT ===
-  loadHome();
+  // PWA: Handle shortcut URL parameters
+  const urlParams = new URLSearchParams(window.location.search);
+  const tabParam = urlParams.get('tab');
+  const actionParam = urlParams.get('action');
+
+  if (tabParam) {
+    const tabBtn = document.querySelector(`.tab-btn[data-tab="${tabParam}"]`);
+    if (tabBtn) tabBtn.click();
+  } else {
+    loadHome();
+  }
+
+  if (actionParam === 'test-cast') {
+    setTimeout(() => {
+      const btn = document.getElementById('btn-test-cast');
+      if (btn) btn.click();
+    }, 1500);
+  }
+
   startHomeAutoRefresh();
 })();

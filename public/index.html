@@ -2,12 +2,16 @@
 <html lang="tr">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="description" content="Otomatik ezan vakitleri yonetim paneli - Namaz vakitleri, ezan calar ve Google Nest Hub entegrasyonu">
   <title>Ezan Vakitleri</title>
   <link rel="manifest" href="/manifest.json">
+  <link rel="icon" type="image/png" sizes="192x192" href="/icons/icon-192.png">
+  <link rel="icon" type="image/png" sizes="512x512" href="/icons/icon-512.png">
   <meta name="theme-color" content="#d4a34b">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Ezan">
   <link rel="apple-touch-icon" href="/icons/icon-192.png">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -195,6 +199,18 @@
                   </div>
                 </div>
                 <select id="cfg-audio-fajr"><option value="">Varsayilan</option></select>
+                <div class="dua-settings">
+                  <span class="dua-label">Ezan Duasi</span>
+                  <select id="cfg-dua-fajr"><option value="">Yok</option></select>
+                  <div class="dua-volume-row">
+                    <span class="dua-volume-label">Ses</span>
+                    <div class="stepper stepper-compact">
+                      <button type="button" class="stepper-btn stepper-minus" id="dua-vol-minus-fajr">−</button>
+                      <span class="stepper-value" id="dua-vol-display-fajr">50%</span>
+                      <button type="button" class="stepper-btn stepper-plus" id="dua-vol-plus-fajr">+</button>
+                    </div>
+                  </div>
+                </div>
                 <div class="fajr-offset-row">
                   <span class="fajr-offset-label">Gunes dogusundan once</span>
                   <div class="stepper stepper-compact">
@@ -232,6 +248,18 @@
                     </div>
                   </div>
                 </div>
+                <div class="dua-settings">
+                  <span class="dua-label">Ezan Duasi</span>
+                  <select id="cfg-dua-dhuhr"><option value="">Yok</option></select>
+                  <div class="dua-volume-row">
+                    <span class="dua-volume-label">Ses</span>
+                    <div class="stepper stepper-compact">
+                      <button type="button" class="stepper-btn stepper-minus" id="dua-vol-minus-dhuhr">−</button>
+                      <span class="stepper-value" id="dua-vol-display-dhuhr">50%</span>
+                      <button type="button" class="stepper-btn stepper-plus" id="dua-vol-plus-dhuhr">+</button>
+                    </div>
+                  </div>
+                </div>
               </div>
               <div class="prayer-setting" data-prayer="asr">
                 <div class="prayer-setting-top">
@@ -249,6 +277,18 @@
                   </div>
                 </div>
                 <select id="cfg-audio-asr"><option value="">Varsayilan</option></select>
+                <div class="dua-settings">
+                  <span class="dua-label">Ezan Duasi</span>
+                  <select id="cfg-dua-asr"><option value="">Yok</option></select>
+                  <div class="dua-volume-row">
+                    <span class="dua-volume-label">Ses</span>
+                    <div class="stepper stepper-compact">
+                      <button type="button" class="stepper-btn stepper-minus" id="dua-vol-minus-asr">−</button>
+                      <span class="stepper-value" id="dua-vol-display-asr">50%</span>
+                      <button type="button" class="stepper-btn stepper-plus" id="dua-vol-plus-asr">+</button>
+                    </div>
+                  </div>
+                </div>
               </div>
               <div class="prayer-setting" data-prayer="maghrib">
                 <div class="prayer-setting-top">
@@ -266,6 +306,18 @@
                   </div>
                 </div>
                 <select id="cfg-audio-maghrib"><option value="">Varsayilan</option></select>
+                <div class="dua-settings">
+                  <span class="dua-label">Ezan Duasi</span>
+                  <select id="cfg-dua-maghrib"><option value="">Yok</option></select>
+                  <div class="dua-volume-row">
+                    <span class="dua-volume-label">Ses</span>
+                    <div class="stepper stepper-compact">
+                      <button type="button" class="stepper-btn stepper-minus" id="dua-vol-minus-maghrib">−</button>
+                      <span class="stepper-value" id="dua-vol-display-maghrib">50%</span>
+                      <button type="button" class="stepper-btn stepper-plus" id="dua-vol-plus-maghrib">+</button>
+                    </div>
+                  </div>
+                </div>
               </div>
               <div class="prayer-setting" data-prayer="isha">
                 <div class="prayer-setting-top">
@@ -283,6 +335,18 @@
                   </div>
                 </div>
                 <select id="cfg-audio-isha"><option value="">Varsayilan</option></select>
+                <div class="dua-settings">
+                  <span class="dua-label">Ezan Duasi</span>
+                  <select id="cfg-dua-isha"><option value="">Yok</option></select>
+                  <div class="dua-volume-row">
+                    <span class="dua-volume-label">Ses</span>
+                    <div class="stepper stepper-compact">
+                      <button type="button" class="stepper-btn stepper-minus" id="dua-vol-minus-isha">−</button>
+                      <span class="stepper-value" id="dua-vol-display-isha">50%</span>
+                      <button type="button" class="stepper-btn stepper-plus" id="dua-vol-plus-isha">+</button>
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
           </fieldset>
@@ -439,12 +503,98 @@
     <p>Automatic Prayer Times</p>
   </footer>
 
+  <!-- PWA: Offline banner -->
+  <div id="offline-banner" class="offline-banner">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="1" y1="1" x2="23" y2="23"/><path d="M16.72 11.06A10.94 10.94 0 0 1 19 12.55"/><path d="M5 12.55a10.94 10.94 0 0 1 5.17-2.39"/><path d="M10.71 5.05A16 16 0 0 1 22.56 9"/><path d="M1.42 9a15.91 15.91 0 0 1 4.7-2.88"/><path d="M8.53 16.11a6 6 0 0 1 6.95 0"/><line x1="12" y1="20" x2="12.01" y2="20"/></svg>
+    <span>Cevrimdisi - Son veriler gosteriliyor</span>
+  </div>
+
+  <!-- PWA: Install banner -->
+  <div id="install-banner" class="install-banner">
+    <div class="install-banner-content">
+      <span class="install-banner-text">Uygulamayi ana ekrana ekleyin</span>
+      <div class="install-banner-actions">
+        <button class="btn" onclick="triggerInstall()">Yukle</button>
+        <button class="btn btn-secondary" onclick="this.closest('.install-banner').classList.remove('visible')">Kapat</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- PWA: Update toast -->
+  <div id="update-toast" class="update-toast">
+    <span>Yeni versiyon mevcut</span>
+    <button id="btn-update-app" class="btn">Guncelle</button>
+  </div>
+
   <script src="js/api.js"></script>
   <script src="js/app.js"></script>
   <script>
-    if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.register('/sw.js').catch(() => {});
-    }
+  (function() {
+    if (!('serviceWorker' in navigator)) return;
+
+    navigator.serviceWorker.register('/sw.js').then(function(reg) {
+      // Check for updates every 30 minutes
+      setInterval(function() { reg.update(); }, 30 * 60 * 1000);
+
+      // Show update toast when new SW is waiting
+      function showUpdateToast(worker) {
+        var toast = document.getElementById('update-toast');
+        if (!toast) return;
+        toast.classList.add('visible');
+        document.getElementById('btn-update-app').onclick = function() {
+          worker.postMessage('SKIP_WAITING');
+          toast.classList.remove('visible');
+        };
+      }
+
+      if (reg.waiting) {
+        showUpdateToast(reg.waiting);
+      }
+
+      reg.addEventListener('updatefound', function() {
+        var newWorker = reg.installing;
+        newWorker.addEventListener('statechange', function() {
+          if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+            showUpdateToast(newWorker);
+          }
+        });
+      });
+    }).catch(function() {});
+
+    // Reload when new SW takes over
+    var refreshing = false;
+    navigator.serviceWorker.addEventListener('controllerchange', function() {
+      if (refreshing) return;
+      refreshing = true;
+      location.reload();
+    });
+
+    // Install prompt
+    var deferredPrompt = null;
+
+    window.addEventListener('beforeinstallprompt', function(e) {
+      e.preventDefault();
+      deferredPrompt = e;
+      var banner = document.getElementById('install-banner');
+      if (banner) banner.classList.add('visible');
+    });
+
+    window.addEventListener('appinstalled', function() {
+      deferredPrompt = null;
+      var banner = document.getElementById('install-banner');
+      if (banner) banner.classList.remove('visible');
+    });
+
+    window.triggerInstall = function() {
+      if (!deferredPrompt) return;
+      deferredPrompt.prompt();
+      deferredPrompt.userChoice.then(function() {
+        deferredPrompt = null;
+        var banner = document.getElementById('install-banner');
+        if (banner) banner.classList.remove('visible');
+      });
+    };
+  })();
   </script>
 </body>
 </html>
