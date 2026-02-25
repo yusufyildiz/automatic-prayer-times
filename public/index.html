@@ -42,32 +42,7 @@
   <main>
     <!-- HOME TAB -->
     <section id="tab-home" class="tab-content active">
-      <div class="card card-reveal" style="--reveal-delay: 0s">
-        <h2>Sistem Durumu</h2>
-        <div class="status-grid">
-          <div class="status-item">
-            <span class="label">Durum</span>
-            <span id="status-running" class="value">--</span>
-          </div>
-          <div class="status-item">
-            <span class="label">Sistem</span>
-            <label class="toggle-switch">
-              <input type="checkbox" id="system-toggle" checked>
-              <span class="toggle-slider"></span>
-            </label>
-          </div>
-          <div class="status-item">
-            <span class="label">Hoparlor IP</span>
-            <span id="status-device-ip" class="value">--</span>
-          </div>
-          <div class="status-item">
-            <span class="label">Saat Dilimi</span>
-            <span id="status-timezone" class="value">--</span>
-          </div>
-        </div>
-      </div>
-
-      <div class="card silent-mode-card card-reveal" style="--reveal-delay: 0.05s" id="silent-mode-card">
+      <div class="card silent-mode-card card-reveal" style="--reveal-delay: 0s" id="silent-mode-card">
         <div class="silent-mode-header">
           <div class="silent-mode-title">
             <svg class="silent-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 5L6 9H2v6h4l5 4V5z"/><line x1="23" y1="9" x2="17" y2="15"/><line x1="17" y1="9" x2="23" y2="15"/></svg>
@@ -151,6 +126,31 @@
 
     <!-- SETTINGS TAB -->
     <section id="tab-settings" class="tab-content">
+      <div class="card">
+        <h2>Sistem Durumu</h2>
+        <div class="status-grid">
+          <div class="status-item">
+            <span class="label">Durum</span>
+            <span id="status-running" class="value">--</span>
+          </div>
+          <div class="status-item">
+            <span class="label">Sistem</span>
+            <label class="toggle-switch">
+              <input type="checkbox" id="system-toggle" checked>
+              <span class="toggle-slider"></span>
+            </label>
+          </div>
+          <div class="status-item">
+            <span class="label">Hoparlor IP</span>
+            <span id="status-device-ip" class="value">--</span>
+          </div>
+          <div class="status-item">
+            <span class="label">Saat Dilimi</span>
+            <span id="status-timezone" class="value">--</span>
+          </div>
+        </div>
+      </div>
+
       <div class="card">
         <h2>Konfigürasyon</h2>
         <form id="config-form">

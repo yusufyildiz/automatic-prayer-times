@@ -68,7 +68,6 @@
   async function loadHome() {
     try {
       currentStatus = await API.getStatus();
-      renderStatus(currentStatus);
       renderSilentMode(currentStatus);
       renderNowPlaying(currentStatus);
       renderTodayTimes(currentStatus);
@@ -475,10 +474,12 @@
   // === SETTINGS TAB ===
   async function loadSettings() {
     try {
-      const [config, audioData] = await Promise.all([
+      const [status, config, audioData] = await Promise.all([
+        API.getStatus(),
         API.getConfig(),
         API.getAudioFiles(),
       ]);
+      renderStatus(status);
       populateConfigForm(config, audioData.files);
     } catch (e) {
       console.error('Failed to load settings:', e);
