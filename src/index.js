@@ -424,6 +424,29 @@ class AdhanPlayer {
         if (this.prayerHistory) {
           this.prayerHistory.record(prayer, time, 'played');
         }
+
+        // Play dua after ezan if configured
+        if (this.config.duaFiles?.[prayer]) {
+          try {
+            console.log(`📿 Ezan duasi caliniyor (${prayer})...`);
+            await new Promise(r => setTimeout(r, 3000));
+            const duaVolume = this.config.duaVolumes?.[prayer] ?? volume;
+            const duaUrl = this.server.getAudioUrl(this.config.duaFiles[prayer]);
+            const duaPlayer = new GoogleCastPlayer({
+              deviceIp: this.config.deviceIp,
+              volume: duaVolume,
+            });
+            try {
+              await duaPlayer.playAdhan(duaUrl, 'Ezan Duasi');
+              console.log(`✅ Ezan duasi tamamlandi (${prayer})`);
+            } finally {
+              duaPlayer.cleanup();
+            }
+          } catch (duaError) {
+            console.error(`❌ Ezan duasi hatasi (${prayer}): ${duaError.message}`);
+          }
+        }
+
         this.currentlyPlaying = null;
         return; // Success, exit
       } catch (error) {
