@@ -932,6 +932,51 @@ fieldset legend {
   opacity: 0.4;
 }
 
+/* Expand/collapse details */
+.prayer-setting-details {
+  display: none;
+  padding-top: 0.45rem;
+  border-top: 1px dashed rgba(212, 163, 75, 0.12);
+  margin-top: 0.15rem;
+}
+
+.prayer-setting.expanded .prayer-setting-details {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+/* Expand button */
+.btn-expand-prayer {
+  width: 30px;
+  height: 30px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: 1px solid var(--border-subtle);
+  border-radius: 50%;
+  color: var(--text-muted);
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: all 0.25s ease;
+  padding: 0;
+}
+
+.btn-expand-prayer:hover {
+  color: var(--gold);
+  border-color: rgba(212, 163, 75, 0.3);
+  background: rgba(212, 163, 75, 0.08);
+}
+
+.btn-expand-prayer svg {
+  transition: transform 0.25s ease;
+}
+
+.prayer-setting.expanded .btn-expand-prayer svg {
+  transform: rotate(180deg);
+}
+
 .prayer-setting-top {
   display: flex;
   align-items: center;

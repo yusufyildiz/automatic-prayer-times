@@ -733,6 +733,13 @@
     });
   }
 
+  // Prayer card expand/collapse toggle
+  document.querySelectorAll('.btn-expand-prayer').forEach(btn => {
+    btn.addEventListener('click', () => {
+      btn.closest('.prayer-setting').classList.toggle('expanded');
+    });
+  });
+
   // Config form submit
   document.getElementById('config-form').addEventListener('submit', async (e) => {
     e.preventDefault();

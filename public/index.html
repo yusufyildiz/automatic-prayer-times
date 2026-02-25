@@ -196,27 +196,32 @@
                       <button type="button" class="stepper-btn stepper-plus">+</button>
                     </div>
                     <button type="button" class="btn btn-small btn-secondary btn-test-prayer" data-prayer="fajr">&#9654;</button>
+                    <button type="button" class="btn-expand-prayer" aria-label="Detaylar">
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+                    </button>
                   </div>
                 </div>
-                <select id="cfg-audio-fajr"><option value="">Varsayilan</option></select>
-                <div class="dua-settings">
-                  <span class="dua-label">Ezan Duasi</span>
-                  <select id="cfg-dua-fajr"><option value="">Yok</option></select>
-                  <div class="dua-volume-row">
-                    <span class="dua-volume-label">Ses</span>
+                <div class="prayer-setting-details">
+                  <select id="cfg-audio-fajr"><option value="">Varsayilan</option></select>
+                  <div class="fajr-offset-row">
+                    <span class="fajr-offset-label">Gunes dogusundan once</span>
                     <div class="stepper stepper-compact">
-                      <button type="button" class="stepper-btn stepper-minus" id="dua-vol-minus-fajr">−</button>
-                      <span class="stepper-value" id="dua-vol-display-fajr">50%</span>
-                      <button type="button" class="stepper-btn stepper-plus" id="dua-vol-plus-fajr">+</button>
+                      <button type="button" class="stepper-btn stepper-minus" id="fajr-offset-minus">−</button>
+                      <span class="stepper-value" id="fajr-offset-display">40 dk</span>
+                      <button type="button" class="stepper-btn stepper-plus" id="fajr-offset-plus">+</button>
                     </div>
                   </div>
-                </div>
-                <div class="fajr-offset-row">
-                  <span class="fajr-offset-label">Gunes dogusundan once</span>
-                  <div class="stepper stepper-compact">
-                    <button type="button" class="stepper-btn stepper-minus" id="fajr-offset-minus">−</button>
-                    <span class="stepper-value" id="fajr-offset-display">40 dk</span>
-                    <button type="button" class="stepper-btn stepper-plus" id="fajr-offset-plus">+</button>
+                  <div class="dua-settings">
+                    <span class="dua-label">Ezan Duasi</span>
+                    <select id="cfg-dua-fajr"><option value="">Yok</option></select>
+                    <div class="dua-volume-row">
+                      <span class="dua-volume-label">Ses</span>
+                      <div class="stepper stepper-compact">
+                        <button type="button" class="stepper-btn stepper-minus" id="dua-vol-minus-fajr">−</button>
+                        <span class="stepper-value" id="dua-vol-display-fajr">50%</span>
+                        <button type="button" class="stepper-btn stepper-plus" id="dua-vol-plus-fajr">+</button>
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -233,30 +238,35 @@
                       <button type="button" class="stepper-btn stepper-plus">+</button>
                     </div>
                     <button type="button" class="btn btn-small btn-secondary btn-test-prayer" data-prayer="dhuhr">&#9654;</button>
+                    <button type="button" class="btn-expand-prayer" aria-label="Detaylar">
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+                    </button>
                   </div>
                 </div>
-                <select id="cfg-audio-dhuhr"><option value="">Varsayilan</option></select>
-                <div class="friday-settings" id="friday-settings">
-                  <span class="friday-label">Cuma Selasi</span>
-                  <select id="cfg-friday-audio"><option value="">Yok (Normal ezan)</option></select>
-                  <div class="friday-volume-row">
-                    <span class="friday-volume-label">Ses</span>
-                    <div class="stepper stepper-compact">
-                      <button type="button" class="stepper-btn stepper-minus" id="friday-vol-minus">−</button>
-                      <span class="stepper-value" id="friday-vol-display">50%</span>
-                      <button type="button" class="stepper-btn stepper-plus" id="friday-vol-plus">+</button>
+                <div class="prayer-setting-details">
+                  <select id="cfg-audio-dhuhr"><option value="">Varsayilan</option></select>
+                  <div class="friday-settings" id="friday-settings">
+                    <span class="friday-label">Cuma Selasi</span>
+                    <select id="cfg-friday-audio"><option value="">Yok (Normal ezan)</option></select>
+                    <div class="friday-volume-row">
+                      <span class="friday-volume-label">Ses</span>
+                      <div class="stepper stepper-compact">
+                        <button type="button" class="stepper-btn stepper-minus" id="friday-vol-minus">−</button>
+                        <span class="stepper-value" id="friday-vol-display">50%</span>
+                        <button type="button" class="stepper-btn stepper-plus" id="friday-vol-plus">+</button>
+                      </div>
                     </div>
                   </div>
-                </div>
-                <div class="dua-settings">
-                  <span class="dua-label">Ezan Duasi</span>
-                  <select id="cfg-dua-dhuhr"><option value="">Yok</option></select>
-                  <div class="dua-volume-row">
-                    <span class="dua-volume-label">Ses</span>
-                    <div class="stepper stepper-compact">
-                      <button type="button" class="stepper-btn stepper-minus" id="dua-vol-minus-dhuhr">−</button>
-                      <span class="stepper-value" id="dua-vol-display-dhuhr">50%</span>
-                      <button type="button" class="stepper-btn stepper-plus" id="dua-vol-plus-dhuhr">+</button>
+                  <div class="dua-settings">
+                    <span class="dua-label">Ezan Duasi</span>
+                    <select id="cfg-dua-dhuhr"><option value="">Yok</option></select>
+                    <div class="dua-volume-row">
+                      <span class="dua-volume-label">Ses</span>
+                      <div class="stepper stepper-compact">
+                        <button type="button" class="stepper-btn stepper-minus" id="dua-vol-minus-dhuhr">−</button>
+                        <span class="stepper-value" id="dua-vol-display-dhuhr">50%</span>
+                        <button type="button" class="stepper-btn stepper-plus" id="dua-vol-plus-dhuhr">+</button>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -274,18 +284,23 @@
                       <button type="button" class="stepper-btn stepper-plus">+</button>
                     </div>
                     <button type="button" class="btn btn-small btn-secondary btn-test-prayer" data-prayer="asr">&#9654;</button>
+                    <button type="button" class="btn-expand-prayer" aria-label="Detaylar">
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+                    </button>
                   </div>
                 </div>
-                <select id="cfg-audio-asr"><option value="">Varsayilan</option></select>
-                <div class="dua-settings">
-                  <span class="dua-label">Ezan Duasi</span>
-                  <select id="cfg-dua-asr"><option value="">Yok</option></select>
-                  <div class="dua-volume-row">
-                    <span class="dua-volume-label">Ses</span>
-                    <div class="stepper stepper-compact">
-                      <button type="button" class="stepper-btn stepper-minus" id="dua-vol-minus-asr">−</button>
-                      <span class="stepper-value" id="dua-vol-display-asr">50%</span>
-                      <button type="button" class="stepper-btn stepper-plus" id="dua-vol-plus-asr">+</button>
+                <div class="prayer-setting-details">
+                  <select id="cfg-audio-asr"><option value="">Varsayilan</option></select>
+                  <div class="dua-settings">
+                    <span class="dua-label">Ezan Duasi</span>
+                    <select id="cfg-dua-asr"><option value="">Yok</option></select>
+                    <div class="dua-volume-row">
+                      <span class="dua-volume-label">Ses</span>
+                      <div class="stepper stepper-compact">
+                        <button type="button" class="stepper-btn stepper-minus" id="dua-vol-minus-asr">−</button>
+                        <span class="stepper-value" id="dua-vol-display-asr">50%</span>
+                        <button type="button" class="stepper-btn stepper-plus" id="dua-vol-plus-asr">+</button>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -303,18 +318,23 @@
                       <button type="button" class="stepper-btn stepper-plus">+</button>
                     </div>
                     <button type="button" class="btn btn-small btn-secondary btn-test-prayer" data-prayer="maghrib">&#9654;</button>
+                    <button type="button" class="btn-expand-prayer" aria-label="Detaylar">
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+                    </button>
                   </div>
                 </div>
-                <select id="cfg-audio-maghrib"><option value="">Varsayilan</option></select>
-                <div class="dua-settings">
-                  <span class="dua-label">Ezan Duasi</span>
-                  <select id="cfg-dua-maghrib"><option value="">Yok</option></select>
-                  <div class="dua-volume-row">
-                    <span class="dua-volume-label">Ses</span>
-                    <div class="stepper stepper-compact">
-                      <button type="button" class="stepper-btn stepper-minus" id="dua-vol-minus-maghrib">−</button>
-                      <span class="stepper-value" id="dua-vol-display-maghrib">50%</span>
-                      <button type="button" class="stepper-btn stepper-plus" id="dua-vol-plus-maghrib">+</button>
+                <div class="prayer-setting-details">
+                  <select id="cfg-audio-maghrib"><option value="">Varsayilan</option></select>
+                  <div class="dua-settings">
+                    <span class="dua-label">Ezan Duasi</span>
+                    <select id="cfg-dua-maghrib"><option value="">Yok</option></select>
+                    <div class="dua-volume-row">
+                      <span class="dua-volume-label">Ses</span>
+                      <div class="stepper stepper-compact">
+                        <button type="button" class="stepper-btn stepper-minus" id="dua-vol-minus-maghrib">−</button>
+                        <span class="stepper-value" id="dua-vol-display-maghrib">50%</span>
+                        <button type="button" class="stepper-btn stepper-plus" id="dua-vol-plus-maghrib">+</button>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -332,18 +352,23 @@
                       <button type="button" class="stepper-btn stepper-plus">+</button>
                     </div>
                     <button type="button" class="btn btn-small btn-secondary btn-test-prayer" data-prayer="isha">&#9654;</button>
+                    <button type="button" class="btn-expand-prayer" aria-label="Detaylar">
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+                    </button>
                   </div>
                 </div>
-                <select id="cfg-audio-isha"><option value="">Varsayilan</option></select>
-                <div class="dua-settings">
-                  <span class="dua-label">Ezan Duasi</span>
-                  <select id="cfg-dua-isha"><option value="">Yok</option></select>
-                  <div class="dua-volume-row">
-                    <span class="dua-volume-label">Ses</span>
-                    <div class="stepper stepper-compact">
-                      <button type="button" class="stepper-btn stepper-minus" id="dua-vol-minus-isha">−</button>
-                      <span class="stepper-value" id="dua-vol-display-isha">50%</span>
-                      <button type="button" class="stepper-btn stepper-plus" id="dua-vol-plus-isha">+</button>
+                <div class="prayer-setting-details">
+                  <select id="cfg-audio-isha"><option value="">Varsayilan</option></select>
+                  <div class="dua-settings">
+                    <span class="dua-label">Ezan Duasi</span>
+                    <select id="cfg-dua-isha"><option value="">Yok</option></select>
+                    <div class="dua-volume-row">
+                      <span class="dua-volume-label">Ses</span>
+                      <div class="stepper stepper-compact">
+                        <button type="button" class="stepper-btn stepper-minus" id="dua-vol-minus-isha">−</button>
+                        <span class="stepper-value" id="dua-vol-display-isha">50%</span>
+                        <button type="button" class="stepper-btn stepper-plus" id="dua-vol-plus-isha">+</button>
+                      </div>
                     </div>
                   </div>
                 </div>
