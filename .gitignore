@@ -26,6 +26,9 @@ Thumbs.db
 *.swp
 *.swo
 
+# SSL certificates
+certs/
+
 # Runtime
 *.pid
 *.seed

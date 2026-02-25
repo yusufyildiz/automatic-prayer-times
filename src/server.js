@@ -1,8 +1,10 @@
 import express from 'express';
+import https from 'https';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
-import { existsSync, mkdirSync, readdirSync } from 'fs';
+import { existsSync, mkdirSync, readdirSync, readFileSync } from 'fs';
 import { networkInterfaces } from 'os';
+import { execSync } from 'child_process';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -14,9 +16,12 @@ const __dirname = dirname(__filename);
 export class AudioServer {
   constructor(config = {}) {
     this.port = config.port || 3000;
+    this.sslPort = config.sslPort || 3443;
     this.audioDir = config.audioDir || join(__dirname, '..', 'audio');
+    this.certsDir = join(__dirname, '..', 'certs');
     this.app = express();
     this.server = null;
+    this.httpsServer = null;
     this.localIp = config.localIp || this.getLocalIp();
 
     this.setupRoutes();
@@ -87,19 +92,53 @@ export class AudioServer {
   }
 
   /**
-   * Start the HTTP server
+   * Ensure self-signed SSL certificate exists, generate if missing
+   */
+  ensureCerts() {
+    const keyPath = join(this.certsDir, 'server.key');
+    const certPath = join(this.certsDir, 'server.crt');
+
+    if (existsSync(keyPath) && existsSync(certPath)) {
+      return { key: readFileSync(keyPath), cert: readFileSync(certPath) };
+    }
+
+    console.log('🔐 SSL sertifikasi bulunamadi, olusturuluyor...');
+    mkdirSync(this.certsDir, { recursive: true });
+
+    const ip = this.localIp;
+    const subject = `/CN=Ezan Vakitleri/O=AdhanPlayer`;
+    const san = `subjectAltName=IP:${ip},IP:127.0.0.1,DNS:localhost`;
+
+    try {
+      execSync(
+        `openssl req -x509 -newkey rsa:2048 -keyout "${keyPath}" -out "${certPath}" ` +
+        `-days 365 -nodes -subj "${subject}" -addext "${san}"`,
+        { stdio: 'pipe' }
+      );
+      console.log(`✅ SSL sertifikasi olusturuldu (${this.certsDir}/)`);
+    } catch (err) {
+      console.error('❌ SSL sertifikasi olusturulamadi:', err.message);
+      return null;
+    }
+
+    return { key: readFileSync(keyPath), cert: readFileSync(certPath) };
+  }
+
+  /**
+   * Start the HTTP and HTTPS servers
    */
   async start() {
-    return new Promise((resolve, reject) => {
-      // Check if audio directory exists
-      if (!existsSync(this.audioDir)) {
-        console.warn(`Audio directory does not exist: ${this.audioDir}`);
-        console.warn('Creating audio directory...');
-        mkdirSync(this.audioDir, { recursive: true });
-      }
+    // Check if audio directory exists
+    if (!existsSync(this.audioDir)) {
+      console.warn(`Audio directory does not exist: ${this.audioDir}`);
+      console.warn('Creating audio directory...');
+      mkdirSync(this.audioDir, { recursive: true });
+    }
 
+    // Start HTTP server
+    await new Promise((resolve, reject) => {
       this.server = this.app.listen(this.port, '0.0.0.0', () => {
-        console.log(`Audio server running at ${this.getServerUrl()}`);
+        console.log(`🌐 HTTP server: ${this.getServerUrl()}`);
         console.log(`Serving audio files from: ${this.audioDir}`);
         resolve();
       });
@@ -112,22 +151,37 @@ export class AudioServer {
         }
       });
     });
+
+    // Start HTTPS server
+    const certs = this.ensureCerts();
+    if (certs) {
+      await new Promise((resolve) => {
+        this.httpsServer = https.createServer(certs, this.app);
+        this.httpsServer.listen(this.sslPort, '0.0.0.0', () => {
+          console.log(`🔒 HTTPS server: ${this.getDashboardUrl()}`);
+          resolve();
+        });
+        this.httpsServer.on('error', (error) => {
+          console.error(`❌ HTTPS server baslatılamadi: ${error.message}`);
+          resolve(); // Don't block startup if HTTPS fails
+        });
+      });
+    }
   }
 
   /**
-   * Stop the HTTP server
+   * Stop the HTTP and HTTPS servers
    */
   async stop() {
-    return new Promise((resolve) => {
-      if (this.server) {
-        this.server.close(() => {
-          console.log('Audio server stopped');
-          resolve();
-        });
-      } else {
-        resolve();
-      }
-    });
+    const stops = [];
+    if (this.server) {
+      stops.push(new Promise((resolve) => this.server.close(resolve)));
+    }
+    if (this.httpsServer) {
+      stops.push(new Promise((resolve) => this.httpsServer.close(resolve)));
+    }
+    await Promise.all(stops);
+    console.log('Audio server stopped');
   }
 
   /**
@@ -142,6 +196,13 @@ export class AudioServer {
       }
     }
     return `http://${this.localIp}:${this.port}`;
+  }
+
+  /**
+   * Get the HTTPS dashboard URL (for PWA install)
+   */
+  getDashboardUrl() {
+    return `https://${this.localIp}:${this.sslPort}`;
   }
 
   /**
