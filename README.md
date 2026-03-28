@@ -1,61 +1,149 @@
-# Automatic Prayer Times - Adhan Player for Google Nest Hub
+<p align="center">
+  <img src="https://img.shields.io/badge/node-%3E%3D18.0.0-339933?style=for-the-badge&logo=node.js&logoColor=white" alt="Node.js" />
+  <img src="https://img.shields.io/badge/platform-Raspberry%20Pi-c51a4a?style=for-the-badge&logo=raspberrypi&logoColor=white" alt="Raspberry Pi" />
+  <img src="https://img.shields.io/badge/cast-Google%20Nest-4285F4?style=for-the-badge&logo=google-home&logoColor=white" alt="Google Nest" />
+  <img src="https://img.shields.io/badge/license-MIT-blue?style=for-the-badge" alt="License" />
+</p>
 
-Automatically play Adhan (Islamic call to prayer) on your Google Nest Hub at scheduled prayer times. Prayer times are loaded from a CSV file.
+<h1 align="center">
+  <br>
+  Automatic Prayer Times
+  <br>
+  <sub>Adhan Player for Google Nest Hub</sub>
+</h1>
 
-## Features
+<p align="center">
+  <strong>Namaz vakitlerinde Google Nest Hub / Chromecast uzerinden otomatik ezan calan,<br>Raspberry Pi uzerinde 7/24 calisan akilli ezan sistemi.</strong>
+</p>
 
-- 🕌 Plays Adhan audio at exact prayer times
-- 🎵 Different Adhan audio for each prayer (optional)
-- 🔊 Per-prayer volume control (each prayer can have its own volume level)
-- 📅 Reads prayer times from CSV file (supports English & Turkish formats)
-- 🌐 Automatic prayer times fetching from Diyanet API
-- 🔊 Casts audio to Google Nest Hub / Google speakers
-- ⏰ Automatic scheduling with daily refresh
-- 🌅 Sabah (Fajr) prayer scheduled at sunrise - 40 minutes
-- 🎛️ Web dashboard with full management UI (Sacred Twilight theme)
-- 🧪 Device test with beep sound at 30% volume
-- 🎧 Audio file preview (listen in browser)
-- 🔄 System on/off toggle from dashboard
-- 🇦🇹 Vienna timezone configured (customizable)
-- 🍓 Runs on Raspberry Pi
+<p align="center">
+  <a href="#-ozellikler">Ozellikler</a> &bull;
+  <a href="#-hizli-baslangic">Kurulum</a> &bull;
+  <a href="#-web-dashboard">Dashboard</a> &bull;
+  <a href="#-yapilandirma">Yapilandirma</a> &bull;
+  <a href="#-raspberry-pi-kurulumu">Raspberry Pi</a> &bull;
+  <a href="#-api-referansi">API</a>
+</p>
 
-## Requirements
+---
 
-- Node.js 18 or higher
-- Google Nest Hub (with screen) on the same network
-- Adhan audio file (MP3)
-- CSV file with prayer times
+## Ozellikler
 
-## Quick Start
+| Ozellik | Aciklama |
+|---------|----------|
+| **Otomatik Ezan** | 5 vakit namaz icin tam saatinde ezan calar |
+| **Google Cast** | Nest Hub, Chromecast ve diger Cast cihazlarina ses gonderir |
+| **Diyanet API** | Namaz vakitlerini Diyanet'ten otomatik ceker — CSV'ye gerek yok |
+| **Vakit Bazli Ses** | Her namaz icin farkli ezan dosyasi ve ses seviyesi |
+| **Sabah Ozel Zamanlama** | Sabah ezani = Gunesogumu - 40 dakika |
+| **Web Dashboard** | Tarayicidan yonetim paneli (Sacred Twilight tema) |
+| **PWA Destegi** | Telefona ekle, uygulama gibi kullan |
+| **CSV Destegi** | Turkce ve Ingilizce CSV formatlarini otomatik tanir |
+| **Cihaz Testi** | Tek tikla bip sesi ile baglanti testi |
+| **systemd Servisi** | Raspberry Pi'de acilista otomatik baslar |
 
-### 1. Install Dependencies
+---
+
+## Hizli Baslangic
+
+### 1. Kurulum
 
 ```bash
+git clone https://github.com/yusufyildiz/automatic-prayer-times
+cd automatic-prayer-times
 npm install
 ```
 
-### 2. Find Your Google Nest Hub IP
-
-Run the discovery tool:
+### 2. Yapilandirma
 
 ```bash
-npm start -- --discover
+cp config/config.example.json config/config.json
 ```
 
-Or check your router's admin panel for the device's IP address.
+`config/config.json` dosyasini duzenleyin:
 
-### 3. Configure
+```jsonc
+{
+  "deviceIp": "192.168.1.100",   // Google Nest Hub IP adresi
+  "volume": 0.7,                  // Genel ses seviyesi (0.0 - 1.0)
+  "timezone": "Europe/Vienna",    // Saat dilimi
+  "diyanetLocationId": 11618      // Diyanet konum ID (Viyana)
+}
+```
 
-Edit `config/config.json`:
+### 3. Ezan Dosyalari
+
+MP3 dosyalarinizi `audio/` klasorune koyun:
+
+```
+audio/adhan.mp3           # Varsayilan ezan (tum vakitler)
+audio/adhan-fajr.mp3      # Sabah ezani (istege bagli)
+audio/adhan-dhuhr.mp3     # Ogle ezani (istege bagli)
+...
+```
+
+### 4. Calistir
+
+```bash
+npm start
+```
+
+Dashboard'a erisim: **http://localhost:3000**
+
+---
+
+## Web Dashboard
+
+Tarayici uzerinden tam kontrol saglayan yonetim paneli:
+
+- Bugunun namaz vakitlerini ve bir sonraki ezani gorme
+- Ses seviyesi ve yapilandirma ayarlarini degistirme
+- Ezan ve CSV dosyalarini yukleme / silme
+- Cihaz baglanti testi (bip sesi)
+- Sistemi acma / kapatma
+- Namaz vakitlerini Diyanet'ten yenileme
+
+> **PWA**: Telefonunuzda tarayicidan "Ana ekrana ekle" yaparak uygulama gibi kullanabilirsiniz.
+
+---
+
+## Yapilandirma
+
+### Tum Secenekler
+
+| Secenek | Aciklama | Varsayilan |
+|---------|----------|------------|
+| `deviceIp` | Google Nest Hub IP adresi | **Zorunlu** |
+| `deviceName` | Cihaz adi (referans icin) | `"Google Nest Hub"` |
+| `volume` | Genel ses seviyesi (0.0 - 1.0) | `0.7` |
+| `volumes` | Vakit bazli ses seviyeleri | `null` (genel ses kullanilir) |
+| `timezone` | Saat dilimi | `"Europe/Vienna"` |
+| `prayers` | Hangi vakitlerde ezan calinacak | Bes vakit |
+| `adhanAudioFile` | Varsayilan ezan dosyasi | `"adhan.mp3"` |
+| `audioFiles` | Vakit bazli ezan dosyalari | `null` |
+| `csvFile` | CSV dosya adi (`data/` icinde) | `"prayer-times.csv"` |
+| `diyanetLocationId` | Diyanet API konum ID | `11618` (Viyana) |
+| `serverPort` | HTTP sunucu portu | `3000` |
+| `localIp` | Lokal IP (otomatik algilanir) | `null` |
+
+### Vakit Bazli Ses Seviyesi
 
 ```json
 {
-  "deviceIp": "192.168.1.100",  // Your Nest Hub IP
-  "volume": 0.7,                 // Volume (0.0 to 1.0)
-  "timezone": "Europe/Vienna",   // Your timezone
-  "prayers": ["fajr", "dhuhr", "asr", "maghrib", "isha"],
-  "csvFile": "prayer-times.csv",
-  "adhanAudioFile": "adhan.mp3",
+  "volumes": {
+    "fajr": 0.29,
+    "dhuhr": 0.54,
+    "asr": 0.54,
+    "maghrib": 0.54,
+    "isha": 0.40
+  }
+}
+```
+
+### Vakit Bazli Ezan Dosyasi
+
+```json
+{
   "audioFiles": {
     "fajr": "adhan-fajr.mp3",
     "dhuhr": "adhan-dhuhr.mp3",
@@ -66,223 +154,155 @@ Edit `config/config.json`:
 }
 ```
 
-**Note**: The `audioFiles` object is optional. If you want the same Adhan for all prayers, just use `adhanAudioFile`. If you want different Adhan for each prayer (e.g., special Fajr Adhan), configure `audioFiles`.
+---
 
-### 4. Add Your Files
+## Namaz Vakitleri Kaynaklari
 
-1. **Prayer Times CSV**: Copy your CSV file to `data/prayer-times.csv`
+### Diyanet API (Onerilir)
 
-   Format (English):
-   ```csv
-   Date,Fajr,Sunrise,Dhuhr,Asr,Maghrib,Isha
-   2024-11-17,05:32,07:12,11:48,14:23,16:24,18:04
-   ```
+Yapilandirmada `diyanetLocationId` ayarlayin — sistem vakitleri otomatik ceker ve her ayin 25'inde yeniler.
 
-   Format (Turkish):
-   ```csv
-   Miladi Tarih,İmsak,Güneş,Öğle,İkindi,Akşam,Yatsı
-   01 Ocak 2025,05:51,07:38,12:03,13:57,16:18,17:52
-   ```
+### CSV Dosyasi
 
-2. **Adhan Audio**: Place your MP3 file(s) in the `audio/` directory
+Iki format desteklenir, sistem otomatik tanir:
 
-   - Single file: `audio/adhan.mp3`
-   - Multiple files: `audio/adhan-fajr.mp3`, `audio/adhan-dhuhr.mp3`, etc.
-
-   You can download Adhan audio from various Islamic websites.
-
-### 5. Run
-
-```bash
-npm start
+**Turkce Format:**
+```csv
+Miladi Tarih,Imsak,Gunes,Ogle,Ikindi,Aksam,Yatsi
+01 Ocak 2025,05:51,07:38,12:03,13:57,16:18,17:52
 ```
 
-## CSV File Format
-
-The system supports multiple CSV formats:
-
-### English Format
-
-- `Date` - Date in YYYY-MM-DD format (also supports DD/MM/YYYY, MM/DD/YYYY)
-- `Fajr` - Fajr prayer time (HH:MM)
-- `Sunrise` - Sunrise time (optional)
-- `Dhuhr` - Dhuhr/Zuhr prayer time
-- `Asr` - Asr prayer time
-- `Maghrib` - Maghrib prayer time
-- `Isha` - Isha prayer time
-
-Example:
+**Ingilizce Format:**
 ```csv
 Date,Fajr,Sunrise,Dhuhr,Asr,Maghrib,Isha
 2024-11-17,05:32,07:12,11:48,14:23,16:24,18:04
-2024-11-18,05:33,07:14,11:48,14:22,16:23,18:03
 ```
 
-### Turkish Format
+---
 
-- `Miladi Tarih` - Date in "DD Month YYYY" format (e.g., "01 Ocak 2025")
-- `İmsak` - Fajr/Imsak time
-- `Güneş` - Sunrise time
-- `Öğle` - Dhuhr/Zuhr time
-- `İkindi` - Asr time
-- `Akşam` - Maghrib time
-- `Yatsı` - Isha time
+## Raspberry Pi Kurulumu
 
-Example:
-```csv
-Miladi Tarih,İmsak,Güneş,Öğle,İkindi,Akşam,Yatsı
-01 Ocak 2025,05:51,07:38,12:03,13:57,16:18,17:52
-02 Ocak 2025,05:51,07:38,12:03,13:58,16:19,17:53
-```
-
-**Note**: The system auto-detects the format based on column names.
-
-## Configuration Options
-
-| Option | Description | Default |
-|--------|-------------|---------|
-| `deviceIp` | IP address of Google Nest Hub | Required |
-| `deviceName` | Name of the device (for reference) | "Google Nest Hub" |
-| `volume` | Volume level (0.0 - 1.0) | 0.7 |
-| `timezone` | Timezone for scheduling | "Europe/Vienna" |
-| `prayers` | Which prayers to announce | All five prayers |
-| `csvFile` | Name of CSV file in data/ folder | "prayer-times.csv" |
-| `adhanAudioFile` | Default audio file (fallback) | "adhan.mp3" |
-| `audioFiles` | Object mapping each prayer to its audio file | null (uses adhanAudioFile) |
-| `serverPort` | HTTP server port for audio streaming | 3000 |
-| `localIp` | Override local IP detection | Auto-detect |
-| `testConnection` | Test Cast connection on startup | false |
-| `volumes` | Per-prayer volume levels (object: prayer -> 0.0-1.0) | null (uses global volume) |
-| `diyanetLocationId` | Diyanet API location ID for auto-fetch | 11618 (Vienna) |
-
-## Running on Raspberry Pi
-
-### Install Node.js 18+
+### Node.js 18+ Yukle
 
 ```bash
-# Update package list
-sudo apt update
-
-# Install Node.js 18.x
 curl -fsSL https://deb.nodesource.com/setup_18.x | sudo -E bash -
 sudo apt-get install -y nodejs
-
-# Verify installation
-node --version
-npm --version
 ```
 
-### Install mDNS Dependencies
+### mDNS Bagimliligini Yukle
 
 ```bash
 sudo apt-get install libavahi-compat-libdnssd-dev
 ```
 
-### Run as a Service
-
-1. Copy the service file:
+### systemd Servisi Olarak Calistir
 
 ```bash
+# Servis dosyasini kopyala
 sudo cp adhan-player.service /etc/systemd/system/
-```
 
-2. Edit the service file to match your paths:
-
-```bash
+# Yollari duzenle
 sudo nano /etc/systemd/system/adhan-player.service
-```
 
-3. Enable and start the service:
-
-```bash
+# Etkinlestir ve baslat
 sudo systemctl daemon-reload
 sudo systemctl enable adhan-player
 sudo systemctl start adhan-player
 ```
 
-4. Check status:
+### Servis Yonetimi
 
 ```bash
-sudo systemctl status adhan-player
+sudo systemctl status adhan-player        # Durum
+sudo systemctl restart adhan-player       # Yeniden baslat
+sudo journalctl -u adhan-player -f        # Canli loglar
 ```
 
-5. View logs:
+---
 
-```bash
-journalctl -u adhan-player -f
-```
+## API Referansi
 
-## Troubleshooting
+| Method | Endpoint | Aciklama |
+|--------|----------|----------|
+| `GET` | `/api/status` | Sistem durumu, vakitler, siradaki ezan |
+| `GET` | `/api/prayer-times/today` | Bugunun namaz vakitleri |
+| `GET` | `/api/config` | Yapilandirmayi oku |
+| `PUT` | `/api/config` | Yapilandirmayi guncelle |
+| `GET` | `/api/audio-files` | Ezan dosyalarini listele |
+| `POST` | `/api/audio-files` | Ezan dosyasi yukle |
+| `DELETE` | `/api/audio-files/:name` | Ezan dosyasi sil |
+| `GET` | `/api/csv-files` | CSV dosyalarini listele |
+| `POST` | `/api/csv-files` | CSV dosyasi yukle |
+| `POST` | `/api/actions/test-cast` | Cihaz baglanti testi (bip) |
+| `POST` | `/api/actions/fetch-times` | Diyanet'ten vakitleri cek |
+| `POST` | `/api/actions/reschedule` | Bugunun ezanlarini yeniden planla |
+| `POST` | `/api/actions/toggle-system` | Sistemi ac/kapat |
 
-### Device Not Found
+---
 
-- Ensure Nest Hub and computer/Pi are on the same network
-- Check if the IP address is correct
-- Try running `npm start -- --discover` to find devices
-- Make sure port 3000 is not blocked by firewall
-
-### Audio Not Playing
-
-- Verify the audio file exists in `audio/` directory
-- Check if the audio file is a valid MP3
-- Ensure the Nest Hub volume is not muted
-- Test with a simple audio file first
-
-### Prayer Times Not Loading
-
-- Check CSV file format matches the example
-- Verify dates are in the correct format
-- Ensure the CSV file is in the `data/` directory
-- Check for UTF-8 encoding (no special characters)
-
-### Network Issues
-
-- Open port 3000 in your firewall
-- Ensure both devices can communicate
-- Try static IP for Nest Hub in router settings
-
-## Project Structure
+## Proje Yapisi
 
 ```
 automatic-prayer-times/
 ├── src/
-│   ├── index.js          # Main entry point & beep.wav generator
-│   ├── scheduler.js      # Cron job scheduler (fajr = sunrise-40min)
-│   ├── cast.js           # Google Cast integration
-│   ├── csv-parser.js     # CSV prayer times reader
-│   ├── server.js         # HTTP server for audio
-│   ├── api-routes.js     # REST API for web dashboard
-│   └── diyanet-fetcher.js # Diyanet API prayer times fetcher
-├── public/
-│   ├── index.html        # Dashboard HTML
-│   ├── css/style.css     # Sacred Twilight theme
-│   └── js/
-│       ├── api.js        # API client
-│       └── app.js        # Dashboard logic
-├── audio/
-│   ├── adhan.mp3         # Default Adhan (or single file)
-│   ├── adhan-fajr.mp3    # Fajr-specific Adhan (optional)
-│   ├── adhan-dhuhr.mp3   # Dhuhr-specific Adhan (optional)
-│   ├── adhan-asr.mp3     # Asr-specific Adhan (optional)
-│   ├── adhan-maghrib.mp3 # Maghrib-specific Adhan (optional)
-│   └── adhan-isha.mp3    # Isha-specific Adhan (optional)
-├── data/
-│   └── prayer-times.csv  # Your prayer times (Turkish or English)
+│   ├── index.js              # Ana giris noktasi & AdhanPlayer sinifi
+│   ├── scheduler.js          # Cron zamanlayici (sabah = gunesogumu-40dk)
+│   ├── cast.js               # Google Cast entegrasyonu
+│   ├── csv-parser.js         # CSV okuyucu (TR & EN)
+│   ├── server.js             # Express HTTP sunucu
+│   ├── api-routes.js         # REST API endpointleri
+│   ├── diyanet-fetcher.js    # Diyanet API baglantisi
+│   └── prayer-history.js     # Ezan gecmisi
+├── public/                   # Web dashboard (PWA)
+│   ├── index.html
+│   ├── css/style.css         # Sacred Twilight tema
+│   ├── js/app.js
+│   └── js/api.js
+├── audio/                    # Ezan MP3 dosyalari
+├── data/                     # Namaz vakitleri CSV
 ├── config/
-│   └── config.json       # Configuration
-├── package.json
-├── adhan-player.service  # Systemd service file
-└── README.md
+│   ├── config.json           # Yapilandirma (gitignore'da)
+│   └── config.example.json   # Ornek yapilandirma
+├── adhan-player.service      # systemd servis dosyasi
+└── package.json
 ```
-
-## License
-
-MIT
-
-## Contributing
-
-Feel free to submit issues and pull requests!
 
 ---
 
-May your prayers be accepted. 🤲
+## Sorun Giderme
+
+<details>
+<summary><strong>Cihaz bulunamiyor</strong></summary>
+
+- Nest Hub ve cihazinizin ayni agda oldugundan emin olun
+- IP adresini kontrol edin: `npm start -- --discover`
+- Port 3000'in guvenlik duvarindan gectigini dogrulayin
+</details>
+
+<details>
+<summary><strong>Ses calinmiyor</strong></summary>
+
+- `audio/` klasorunde MP3 dosyasinin varligini kontrol edin
+- Nest Hub'in sessize alinmadigini dogrulayin
+- Dashboard'dan "Cihaz Testi" butonuyla bip sesi deneyin
+</details>
+
+<details>
+<summary><strong>Vakitler yuklenmiyor</strong></summary>
+
+- Diyanet API kullaniyorsaniz `diyanetLocationId` degerini kontrol edin
+- CSV kullaniyorsaniz format ornekleriyle karsilastirin
+- Dosya kodlamasinin UTF-8 oldugunu dogrulayin
+</details>
+
+---
+
+## Lisans
+
+MIT
+
+---
+
+<p align="center">
+  <sub>Namazlariniz kabul olsun.</sub>
+</p>

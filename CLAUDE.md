@@ -73,7 +73,7 @@ sudo journalctl -u adhan-player -f    # live logs
 ## Config Example
 ```json
 {
-  "deviceIp": "192.168.68.103",
+  "deviceIp": "192.168.1.100",
   "volume": 0.29,
   "timezone": "Europe/Vienna",
   "prayers": ["fajr", "dhuhr", "asr", "maghrib", "isha"],
