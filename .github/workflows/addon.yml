@@ -82,5 +82,6 @@ jobs:
           docker logs addon
           cat /tmp/health.json
           grep -q '"ok": true' /tmp/health.json
-          docker logs addon 2>&1 | grep -q "TZ=Europe/Vienna"
+          docker logs addon 2>&1 | grep -q "Saat dilimi : Europe/Vienna"
+          docker logs addon 2>&1 | grep -q "zamanlaması"
           docker rm -f addon

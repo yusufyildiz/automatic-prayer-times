@@ -2,9 +2,7 @@
 # shellcheck shell=bash
 # with-contenv: makes SUPERVISOR_TOKEN / PULSE_SERVER from the container
 # environment available to the Node process under s6-overlay.
+# Options (incl. timezone → TZ) are read by Node from /data/options.json.
 
-TZ="$(bashio::config 'timezone' 'Europe/Vienna')"
-export TZ
-
-bashio::log.info "Ezan add-on başlatılıyor (TZ=${TZ})"
+bashio::log.info "Ezan add-on başlatılıyor"
 exec node /app/src/index.js

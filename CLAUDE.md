@@ -49,7 +49,7 @@ Topics under `ezan/…`, availability `ezan/availability` with LWT.
 |------|---------|
 | `repository.yaml` | HA add-on repository metadata |
 | `ezan/config.yaml` | Add-on manifest, options + schema |
-| `ezan/Dockerfile`, `ezan/run.sh` | Image; run.sh exports TZ from options and execs node |
+| `ezan/Dockerfile`, `ezan/run.sh` | Image; run.sh execs node (Node sets TZ from options) |
 | `ezan/translations/{en,tr}.yaml` | Option labels |
 | `ezan/DOCS.md`, `README.md` (root) | User docs (Turkish) |
 | `ezan/src/index.js` | Main app: startup, playback + retries, sensors, health |
