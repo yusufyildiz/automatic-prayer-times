@@ -42,7 +42,8 @@ jobs:
 
       - name: Read version
         id: version
-        run: echo "version=$(grep -E '^version:' ezan/config.yaml | sed -E 's/version: *"?([^"]+)"?/\1/')" >> "$GITHUB_OUTPUT"
+        run: |
+          echo "version=$(grep -E '^version:' ezan/config.yaml | sed -E 's/version: *"?([^"]+)"?/\1/')" >> "$GITHUB_OUTPUT"
 
       - name: Build ${{ matrix.arch }}
         uses: docker/build-push-action@v6
