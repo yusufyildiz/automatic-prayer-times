@@ -75,13 +75,21 @@ jobs:
             -v /tmp/addon-data:/data -e EZAN_MEDIA_DIR=/tmp/media \
             -e EZAN_MQTT_URL=mqtt://127.0.0.1:1883 \
             ezan-addon:${{ matrix.arch }}
-          for i in $(seq 1 45); do
-            if docker exec addon wget -qO- http://127.0.0.1:8099/health > /tmp/health.json 2>/dev/null; then break; fi
+          # wait until the startup Diyanet fetch has finished (success or failure)
+          for i in $(seq 1 60); do
+            if docker logs addon 2>&1 | grep -qE "Diyanet sayfası:|Vakitler çekilemedi"; then break; fi
             sleep 2
           done
+          sleep 3
+          docker exec addon wget -qO- http://127.0.0.1:8099/health > /tmp/health.json
           docker logs addon
           cat /tmp/health.json
           grep -q '"ok": true' /tmp/health.json
           docker logs addon 2>&1 | grep -q "Saat dilimi : Europe/Vienna"
-          docker logs addon 2>&1 | grep -q "zamanlaması"
+          docker logs addon 2>&1 | grep -q "Hazır"
+          if grep -q '"hasTodaysTimes": true' /tmp/health.json; then
+            echo "::notice::Diyanet fetch from CI worked; today's prayers scheduled"
+          else
+            echo "::warning::Diyanet not reachable from CI runner (informational only)"
+          fi
           docker rm -f addon
