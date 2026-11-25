@@ -1,0 +1,85 @@
+name: Add-on
+
+on:
+  push:
+    paths:
+      - "ezan/**"
+      - "repository.yaml"
+      - ".github/workflows/addon.yml"
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: ezan/package-lock.json
+      - run: npm ci
+        working-directory: ezan
+      - run: npm test
+        working-directory: ezan
+
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: aarch64
+            platform: linux/arm64
+          - arch: amd64
+            platform: linux/amd64
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: docker/setup-qemu-action@v3
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Read version
+        id: version
+        run: echo "version=$(grep -E '^version:' ezan/config.yaml | sed -E 's/version: *"?([^"]+)"?/\1/')" >> "$GITHUB_OUTPUT"
+
+      - name: Build ${{ matrix.arch }}
+        uses: docker/build-push-action@v6
+        with:
+          context: ezan
+          platforms: ${{ matrix.platform }}
+          build-args: |
+            BUILD_ARCH=${{ matrix.arch }}
+            BUILD_VERSION=${{ steps.version.outputs.version }}
+          load: true
+          push: false
+          tags: ezan-addon:${{ matrix.arch }}
+
+      - name: Smoke test inside image
+        run: |
+          docker run --rm --platform ${{ matrix.platform }} --entrypoint "" \
+            -v "$PWD/ezan/test:/test:ro" ezan-addon:${{ matrix.arch }} \
+            node /test/smoke.mjs
+
+      - name: Start add-on (s6 + bashio + run.sh) and check /health
+        run: |
+          mkdir -p /tmp/addon-data
+          cat > /tmp/addon-data/options.json <<'JSON'
+          {"location_id":11618,"timezone":"Europe/Vienna","output_mode":"local","volume":0.5,
+           "audio_file":"adhan.mp3","imsak":false,"sabah":true,"ogle":true,"ikindi":true,
+           "aksam":true,"yatsi":true,"fajr_offset":40}
+          JSON
+          docker run -d --name addon --platform ${{ matrix.platform }} \
+            -v /tmp/addon-data:/data -e EZAN_MEDIA_DIR=/tmp/media \
+            -e EZAN_MQTT_URL=mqtt://127.0.0.1:1883 \
+            ezan-addon:${{ matrix.arch }}
+          for i in $(seq 1 45); do
+            if docker exec addon wget -qO- http://127.0.0.1:8099/health > /tmp/health.json 2>/dev/null; then break; fi
+            sleep 2
+          done
+          docker logs addon
+          cat /tmp/health.json
+          grep -q '"ok": true' /tmp/health.json
+          docker logs addon 2>&1 | grep -q "TZ=Europe/Vienna"
+          docker rm -f addon

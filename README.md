@@ -1,308 +1,223 @@
 <p align="center">
-  <img src="https://img.shields.io/badge/node-%3E%3D18.0.0-339933?style=for-the-badge&logo=node.js&logoColor=white" alt="Node.js" />
-  <img src="https://img.shields.io/badge/platform-Raspberry%20Pi-c51a4a?style=for-the-badge&logo=raspberrypi&logoColor=white" alt="Raspberry Pi" />
-  <img src="https://img.shields.io/badge/cast-Google%20Nest-4285F4?style=for-the-badge&logo=google-home&logoColor=white" alt="Google Nest" />
-  <img src="https://img.shields.io/badge/license-MIT-blue?style=for-the-badge" alt="License" />
+  <img src="ezan/logo.png" alt="Ezan Vakitleri" />
 </p>
 
-<h1 align="center">
-  <br>
-  Automatic Prayer Times
-  <br>
-  <sub>Adhan Player for Google Nest Hub</sub>
-</h1>
+<h1 align="center">Ezan Vakitleri — Home Assistant Add-on</h1>
 
 <p align="center">
-  <strong>Namaz vakitlerinde Google Nest Hub / Chromecast uzerinden otomatik ezan calan,<br>Raspberry Pi uzerinde 7/24 calisan akilli ezan sistemi.</strong>
-</p>
-
-<p align="center">
-  <a href="#-ozellikler">Ozellikler</a> &bull;
-  <a href="#-hizli-baslangic">Kurulum</a> &bull;
-  <a href="#-web-dashboard">Dashboard</a> &bull;
-  <a href="#-yapilandirma">Yapilandirma</a> &bull;
-  <a href="#-raspberry-pi-kurulumu">Raspberry Pi</a> &bull;
-  <a href="#-api-referansi">API</a>
+  Diyanet namaz vakitlerinde ezanı otomatik okuyan Home Assistant add-on'u.<br>
+  Ezanı bir <code>media_player</code>'a (Nest Hub, Sonos, …) veya Raspberry Pi'nin kendi ses çıkışına çalar,
+  vakitleri MQTT üzerinden sensör olarak Home Assistant'a açar.
 </p>
 
 ---
 
-## Ozellikler
+## Özellikler
 
-| Ozellik | Aciklama |
-|---------|----------|
-| **Otomatik Ezan** | 5 vakit namaz icin tam saatinde ezan calar |
-| **Google Cast** | Nest Hub, Chromecast ve diger Cast cihazlarina ses gonderir |
-| **Diyanet API** | Namaz vakitlerini Diyanet'ten otomatik ceker — CSV'ye gerek yok |
-| **Vakit Bazli Ses** | Her namaz icin farkli ezan dosyasi ve ses seviyesi |
-| **Sabah Ozel Zamanlama** | Sabah ezani = Gunesogumu - 40 dakika |
-| **Web Dashboard** | Tarayicidan yonetim paneli (Sacred Twilight tema) |
-| **PWA Destegi** | Telefona ekle, uygulama gibi kullan |
-| **CSV Destegi** | Turkce ve Ingilizce CSV formatlarini otomatik tanir |
-| **Cihaz Testi** | Tek tikla bip sesi ile baglanti testi |
-| **systemd Servisi** | Raspberry Pi'de acilista otomatik baslar |
+- **Diyanet vakitleri** — `namazvakitleri.diyanet.gov.tr` konum sayfasından her gün 03:00'te çekilir, `/data` altında önbelleğe alınır. İnternet yokken en son çekilen vakitlerle çalışmaya devam eder (yıllık tablo + 30 günlük tablo → yılbaşında da veri olur).
+- **Sabah ezanı güneş − 40 dk** (ayarlanabilir). İmsak ayrı bir vakit olarak açılıp kapatılabilir.
+- **Vakit bazında açık/kapalı**, sabah için ayrı dosya ve ses seviyesi, isteğe bağlı Cuma öğle dosyası ve ezan duası.
+- **İki çıkış modu:** `media_player` (HA'daki herhangi bir medya oynatıcı) veya `local` (Pi'nin ses çıkışı).
+- **MQTT discovery** ile sensörler, susturma switch'leri ve butonlar — otomasyonlarda kullanılabilir.
+- **Dayanıklı:** yeniden başlatmada o günün zamanlaması doğru kurulur, geçmiş/çalınmış ezan tekrar çalmaz; watchdog ile takılırsa yeniden başlatılır.
 
----
+## Gereksinimler
 
-## Hizli Baslangic
+- Home Assistant OS veya Supervised (test hedefi: Raspberry Pi 4, aarch64)
+- **Mosquitto broker** add-on'u ve **MQTT** entegrasyonu (add-on `mqtt:need` ister)
+- `media_player` modu için ezanı çalacak bir medya oynatıcı entity'si
 
-### 1. Kurulum
+## Kurulum
+
+### A) GitHub deposu olarak (önerilen)
+
+1. **Ayarlar → Eklentiler (Add-ons / Apps) → Eklenti Mağazası**
+2. Sağ üstte **⋮ → Depolar (Repositories)**
+3. Şu adresi ekleyin:
+   ```
+   https://github.com/yusufyildiz/automatic-prayer-times
+   ```
+4. Listede çıkan **Ezan Vakitleri** add-on'unu açın → **Yükle**.
+   İmaj Pi üzerinde derlenir, birkaç dakika sürebilir.
+
+### B) Yerel add-on olarak
+
+1. **Samba share** veya **Advanced SSH & Web Terminal** add-on'u ile Home Assistant'a bağlanın.
+2. Bu depodaki `ezan/` klasörünü olduğu gibi `/addons/ezan/` olarak kopyalayın
+   (Samba'da `addons` paylaşımı). Sonuç: `/addons/ezan/config.yaml`, `/addons/ezan/Dockerfile`, …
+3. **Eklenti Mağazası → ⋮ → Güncellemeleri denetle**.
+4. **Yerel eklentiler (Local add-ons)** bölümünde **Ezan Vakitleri** → **Yükle**.
+
+### Ses dosyalarını koyun
+
+Add-on ilk açılışta `/media/ezan/` klasörünü oluşturur (içine test için `beep.wav` koyar).
+Ezan MP3'lerinizi Samba (`media` paylaşımı) veya **Medya → Yerel Medya → Yükle** ile buraya kopyalayın:
+
+```
+/media/ezan/adhan.mp3
+/media/ezan/adhan-sabah.mp3      (isteğe bağlı)
+```
+
+### Başlatın
+
+1. **Yapılandırma** sekmesinde en azından `media_player_entity` değerini girin (veya `output_mode: local`).
+2. **Başlat**. **Günlük (Log)** sekmesinde zamanlamayı görürsünüz:
+   ```
+   [00:01:00] 📅 2026-11-25 zamanlaması (şu an 00:01:00, Europe/Vienna):
+   [00:01:00]    Sabah   06:29 (güneş 07:09 - 40 dk) — zamanlandı (6 sa 28 dk sonra)
+   [00:01:00]    Öğle    11:46 — zamanlandı (11 sa 45 dk sonra)
+   ...
+   [00:01:00] ⏭️  Sonraki ezan: Sabah 06:29 — 6 sa 28 dk sonra
+   ```
+3. **Watchdog**'u açık bırakın.
+4. Kurulumu test etmek için `button.ezan_test`'e basın. Seçili çıkışta %30 seviyesinde kısa bir bip sesi çalar.
+
+## Ayarlar
+
+| Ayar | Varsayılan | Açıklama |
+|---|---|---|
+| `location_id` | `11618` | Diyanet konum kimliği. [namazvakitleri.diyanet.gov.tr](https://namazvakitleri.diyanet.gov.tr)'de şehri seçince adreste görünen sayı (`/tr-TR/11618/viyana-icin-namaz-vakti` → `11618`). |
+| `timezone` | `Europe/Vienna` | Saat dilimi |
+| `output_mode` | `media_player` | `media_player` veya `local` |
+| `media_player_entity` | — | Ör. `media_player.mutfak_nest_hub` (`media_player` modunda zorunlu) |
+| `volume` | `0.5` | Genel ses seviyesi, 0.0–1.0 |
+| `audio_file` | `adhan.mp3` | `/media/ezan/` içindeki dosya |
+| `imsak` | `false` | İmsak saatinde ezan |
+| `sabah` | `true` | Sabah ezanı (güneş − `fajr_offset`) |
+| `ogle`, `ikindi`, `aksam`, `yatsi` | `true` | Vakit bazında açık/kapalı |
+| `fajr_offset` | `40` | Sabah ezanı güneşten kaç dk önce; `0` = imsakta |
+| `fajr_audio_file` | — | İmsak + sabah için ayrı dosya |
+| `fajr_volume` | — | İmsak + sabah için ayrı ses seviyesi |
+| `friday_audio_file` / `friday_volume` | — | Cuma öğle ezanı için dosya / ses |
+| `dua_audio_file` / `dua_volume` | — | Her ezandan sonra çalınacak dua |
+
+İsteğe bağlı ayarlar, Yapılandırma sekmesinde **"Kullanılmayan isteğe bağlı seçenekleri göster"** ile görünür.
+
+### Çıkış modları
+
+**`media_player`** — Add-on, Home Assistant API üzerinden önce `media_player.volume_set` ve `media_player.play_media` çağırır.
+Dosyayı `media-source://media_source/local/ezan/<dosya>` olarak gönderir. Bu adresi Home Assistant kendi yerel URL'sine çevirir,
+yani hoparlörün add-on container'ına erişmesi gerekmez. Add-on ezan bitene kadar oynatıcının durumunu takip eder.
+Ezan bitince hoparlörün önceki ses seviyesini geri yükler. Başarısız olursa 5 sn arayla 3 kez dener.
+
+> Google Cast cihazları için **Ayarlar → Sistem → Ağ → Home Assistant URL → Yerel ağ** adresi
+> hoparlörün erişebileceği bir `http://<pi-ip>:8123` olmalıdır.
+
+**`local`** — Pi'nin kendi ses çıkışında (3.5 mm jak / HDMI / USB ses kartı, Supervisor'un PulseAudio'su üzerinden) çalar.
+MP3 dosyaları `mpg123`, WAV/OGG/FLAC dosyaları `paplay` ile çalınır. Çıkış cihazı, add-on sayfasındaki **Ses** bölümünden seçilir.
+
+## Oluşan entity'ler
+
+Hepsi **Ezan** cihazı altında, MQTT discovery ile oluşur:
+
+| Entity | Tür | Açıklama |
+|---|---|---|
+| `sensor.ezan_imsak` | timestamp | Bugünün imsak vakti |
+| `sensor.ezan_gunes` | timestamp | Güneş |
+| `sensor.ezan_ogle` | timestamp | Öğle |
+| `sensor.ezan_ikindi` | timestamp | İkindi |
+| `sensor.ezan_aksam` | timestamp | Akşam |
+| `sensor.ezan_yatsi` | timestamp | Yatsı |
+| `sensor.ezan_sabah` | timestamp | Sabah ezanının okunacağı saat (güneş − ofset) |
+| `sensor.ezan_sonraki_vakit` | timestamp | Sıradaki Diyanet vakti (imsak/güneş/öğle/ikindi/akşam/yatsı). Öznitelikler: `vakit`, `saat`, `tarih` |
+| `sensor.ezan_sonraki_ezan` | timestamp | Gerçekten çalacak bir sonraki ezan (kapalı/susturulmuş olanlar hariç) |
+| `sensor.ezan_son_calan` | metin | Son ezan ve durumu (`çalındı`, `atlandı`, `hata`, `durduruldu`) |
+| `switch.ezan_sustur` | switch | Açıkken **hiçbir** ezan çalmaz |
+| `switch.ezan_sustur_imsak` … `switch.ezan_sustur_yatsi` | switch | Vakit bazında susturma (`_imsak`, `_sabah`, `_ogle`, `_ikindi`, `_aksam`, `_yatsi`) |
+| `button.ezan_test` | button | Hoparlör testi (bip, %30) |
+| `button.ezan_durdur` | button | Çalan ezanı durdur |
+
+Switch'lerin durumu `/data/state.json`'da saklanır. Add-on yeniden başlasa da değerleri korunur.
+
+## Örnek otomasyonlar
+
+**Akşam ezanından 10 dk önce bildirim (iftar hatırlatıcısı):**
+
+```yaml
+alias: İftara 10 dakika
+triggers:
+  - trigger: time
+    at:
+      entity_id: sensor.ezan_aksam
+      offset: "-00:10:00"
+actions:
+  - action: notify.mobile_app_telefonum
+    data:
+      title: İftar yaklaşıyor
+      message: "Akşam ezanı {{ as_timestamp(states('sensor.ezan_aksam')) | timestamp_custom('%H:%M') }}"
+```
+
+**Evde kimse yokken ezanı sustur:**
+
+```yaml
+alias: Ev boşken ezan sustur
+triggers:
+  - trigger: state
+    entity_id: zone.home
+actions:
+  - action: "switch.turn_{{ 'on' if states('zone.home') | int(0) == 0 else 'off' }}"
+    target:
+      entity_id: switch.ezan_sustur
+```
+
+**Sabah ezanında koridor ışığını kısık aç:**
+
+```yaml
+alias: Sabah ezanı ışık
+triggers:
+  - trigger: time
+    at: sensor.ezan_sabah
+conditions:
+  - condition: state
+    entity_id: switch.ezan_sustur
+    state: "off"
+actions:
+  - action: light.turn_on
+    target:
+      entity_id: light.koridor
+    data:
+      brightness_pct: 20
+```
+
+## Nasıl çalışır
+
+| Konu | Davranış |
+|---|---|
+| Vakit kaynağı | 1) Diyanet konum sayfası (HTML tablo) → 2) Diyanet yıllık Excel → 3) `prayertimes.api.abdus.dev`. Yeni veri önbellekle birleştirilir, asla üzerine yazılıp kaybolmaz. |
+| Yenileme | Açılışta (o gün çekilmediyse) ve her gün 03:00. Başarısız olursa 30 dk'da bir tekrar dener; bu sırada önbellek kullanılır. |
+| Zamanlama | Her gün 00:01'de o günün ezanları kurulur. Saat dilimi `timezone` ayarından gelir, container'ın saat diliminden bağımsızdır. |
+| Yeniden başlatma | Geçmiş vakitler kurulmaz. Ayrıca çalmaya başlayan her ezan `/data/state.json`'a yazılır. Aynı dakika içinde yeniden başlasa bile ezan tekrar çalmaz. |
+| Watchdog | `http://[HOST]:8099/health`. Bugünün zamanlaması kurulmamışsa 503 döner ve Supervisor add-on'u yeniden başlatır. |
+
+## Sorun giderme
+
+| Log mesajı | Çözüm |
+|---|---|
+| `Ses dosyası bulunamadı: /media/ezan/adhan.mp3` | Dosyayı `/media/ezan/`'a kopyalayın, adı `audio_file` ile aynı olsun. |
+| `media_player_entity geçersiz` | Yapılandırmaya `media_player.xxx` girin. |
+| `… 25 sn içinde çalmaya başlamadı` | Hoparlör kapalı/uykuda olabilir. Home Assistant'ın yerel URL'sini kontrol edin (yukarıdaki not). |
+| `Hiçbir kaynaktan vakit alınamadı` | İnternet/Diyanet erişimi yok. Önbellek varsa ezanlar çalışmaya devam eder. |
+| `MQTT broker bilgisi alınamadı` | Mosquitto add-on'u kurulu ve çalışıyor olmalı. |
+
+## Geliştirme
 
 ```bash
-git clone https://github.com/yusufyildiz/automatic-prayer-times
-cd automatic-prayer-times
+cd ezan
 npm install
+npm test                 # birim + MQTT (gömülü broker) + media_player (sahte HA) testleri
 ```
 
-### 2. Yapilandirma
+Yerelde çalıştırmak için ortam değişkenleri: `EZAN_DATA_DIR`, `EZAN_MEDIA_DIR`, `EZAN_MQTT_URL`, `EZAN_HA_URL` + `EZAN_HA_TOKEN`, `EZAN_HEALTH_PORT`.
+
+GitHub Actions (`.github/workflows/addon.yml`) her push'ta testleri çalıştırır. Ayrıca imajı QEMU ile **aarch64** ve **amd64** için `docker buildx` ile derler,
+imaj içinde smoke test yapar (Node, saat dilimi verisi, mpg123/paplay) ve add-on'u s6 + bashio ile başlatıp `/health`'i kontrol eder.
+
+Yerelde Docker varsa:
 
 ```bash
-cp config/config.example.json config/config.json
+docker buildx build --platform linux/arm64 --build-arg BUILD_ARCH=aarch64 -t ezan-addon:aarch64 --load ezan
 ```
-
-`config/config.json` dosyasini duzenleyin:
-
-```jsonc
-{
-  "deviceIp": "192.168.1.100",   // Google Nest Hub IP adresi
-  "volume": 0.7,                  // Genel ses seviyesi (0.0 - 1.0)
-  "timezone": "Europe/Vienna",    // Saat dilimi
-  "diyanetLocationId": 11618      // Diyanet konum ID (Viyana)
-}
-```
-
-### 3. Ezan Dosyalari
-
-MP3 dosyalarinizi `audio/` klasorune koyun:
-
-```
-audio/adhan.mp3           # Varsayilan ezan (tum vakitler)
-audio/adhan-fajr.mp3      # Sabah ezani (istege bagli)
-audio/adhan-dhuhr.mp3     # Ogle ezani (istege bagli)
-...
-```
-
-### 4. Calistir
-
-```bash
-npm start
-```
-
-Dashboard'a erisim: **http://localhost:3000**
-
----
-
-## Web Dashboard
-
-Tarayici uzerinden tam kontrol saglayan yonetim paneli:
-
-- Bugunun namaz vakitlerini ve bir sonraki ezani gorme
-- Ses seviyesi ve yapilandirma ayarlarini degistirme
-- Ezan ve CSV dosyalarini yukleme / silme
-- Cihaz baglanti testi (bip sesi)
-- Sistemi acma / kapatma
-- Namaz vakitlerini Diyanet'ten yenileme
-
-> **PWA**: Telefonunuzda tarayicidan "Ana ekrana ekle" yaparak uygulama gibi kullanabilirsiniz.
-
----
-
-## Yapilandirma
-
-### Tum Secenekler
-
-| Secenek | Aciklama | Varsayilan |
-|---------|----------|------------|
-| `deviceIp` | Google Nest Hub IP adresi | **Zorunlu** |
-| `deviceName` | Cihaz adi (referans icin) | `"Google Nest Hub"` |
-| `volume` | Genel ses seviyesi (0.0 - 1.0) | `0.7` |
-| `volumes` | Vakit bazli ses seviyeleri | `null` (genel ses kullanilir) |
-| `timezone` | Saat dilimi | `"Europe/Vienna"` |
-| `prayers` | Hangi vakitlerde ezan calinacak | Bes vakit |
-| `adhanAudioFile` | Varsayilan ezan dosyasi | `"adhan.mp3"` |
-| `audioFiles` | Vakit bazli ezan dosyalari | `null` |
-| `csvFile` | CSV dosya adi (`data/` icinde) | `"prayer-times.csv"` |
-| `diyanetLocationId` | Diyanet API konum ID | `11618` (Viyana) |
-| `serverPort` | HTTP sunucu portu | `3000` |
-| `localIp` | Lokal IP (otomatik algilanir) | `null` |
-
-### Vakit Bazli Ses Seviyesi
-
-```json
-{
-  "volumes": {
-    "fajr": 0.29,
-    "dhuhr": 0.54,
-    "asr": 0.54,
-    "maghrib": 0.54,
-    "isha": 0.40
-  }
-}
-```
-
-### Vakit Bazli Ezan Dosyasi
-
-```json
-{
-  "audioFiles": {
-    "fajr": "adhan-fajr.mp3",
-    "dhuhr": "adhan-dhuhr.mp3",
-    "asr": "adhan-asr.mp3",
-    "maghrib": "adhan-maghrib.mp3",
-    "isha": "adhan-isha.mp3"
-  }
-}
-```
-
----
-
-## Namaz Vakitleri Kaynaklari
-
-### Diyanet API (Onerilir)
-
-Yapilandirmada `diyanetLocationId` ayarlayin — sistem vakitleri otomatik ceker ve her ayin 25'inde yeniler.
-
-### CSV Dosyasi
-
-Iki format desteklenir, sistem otomatik tanir:
-
-**Turkce Format:**
-```csv
-Miladi Tarih,Imsak,Gunes,Ogle,Ikindi,Aksam,Yatsi
-01 Ocak 2025,05:51,07:38,12:03,13:57,16:18,17:52
-```
-
-**Ingilizce Format:**
-```csv
-Date,Fajr,Sunrise,Dhuhr,Asr,Maghrib,Isha
-2024-11-17,05:32,07:12,11:48,14:23,16:24,18:04
-```
-
----
-
-## Raspberry Pi Kurulumu
-
-### Node.js 18+ Yukle
-
-```bash
-curl -fsSL https://deb.nodesource.com/setup_18.x | sudo -E bash -
-sudo apt-get install -y nodejs
-```
-
-### mDNS Bagimliligini Yukle
-
-```bash
-sudo apt-get install libavahi-compat-libdnssd-dev
-```
-
-### systemd Servisi Olarak Calistir
-
-```bash
-# Servis dosyasini kopyala
-sudo cp adhan-player.service /etc/systemd/system/
-
-# Yollari duzenle
-sudo nano /etc/systemd/system/adhan-player.service
-
-# Etkinlestir ve baslat
-sudo systemctl daemon-reload
-sudo systemctl enable adhan-player
-sudo systemctl start adhan-player
-```
-
-### Servis Yonetimi
-
-```bash
-sudo systemctl status adhan-player        # Durum
-sudo systemctl restart adhan-player       # Yeniden baslat
-sudo journalctl -u adhan-player -f        # Canli loglar
-```
-
----
-
-## API Referansi
-
-| Method | Endpoint | Aciklama |
-|--------|----------|----------|
-| `GET` | `/api/status` | Sistem durumu, vakitler, siradaki ezan |
-| `GET` | `/api/prayer-times/today` | Bugunun namaz vakitleri |
-| `GET` | `/api/config` | Yapilandirmayi oku |
-| `PUT` | `/api/config` | Yapilandirmayi guncelle |
-| `GET` | `/api/audio-files` | Ezan dosyalarini listele |
-| `POST` | `/api/audio-files` | Ezan dosyasi yukle |
-| `DELETE` | `/api/audio-files/:name` | Ezan dosyasi sil |
-| `GET` | `/api/csv-files` | CSV dosyalarini listele |
-| `POST` | `/api/csv-files` | CSV dosyasi yukle |
-| `POST` | `/api/actions/test-cast` | Cihaz baglanti testi (bip) |
-| `POST` | `/api/actions/fetch-times` | Diyanet'ten vakitleri cek |
-| `POST` | `/api/actions/reschedule` | Bugunun ezanlarini yeniden planla |
-| `POST` | `/api/actions/toggle-system` | Sistemi ac/kapat |
-
----
-
-## Proje Yapisi
-
-```
-automatic-prayer-times/
-├── src/
-│   ├── index.js              # Ana giris noktasi & AdhanPlayer sinifi
-│   ├── scheduler.js          # Cron zamanlayici (sabah = gunesogumu-40dk)
-│   ├── cast.js               # Google Cast entegrasyonu
-│   ├── csv-parser.js         # CSV okuyucu (TR & EN)
-│   ├── server.js             # Express HTTP sunucu
-│   ├── api-routes.js         # REST API endpointleri
-│   ├── diyanet-fetcher.js    # Diyanet API baglantisi
-│   └── prayer-history.js     # Ezan gecmisi
-├── public/                   # Web dashboard (PWA)
-│   ├── index.html
-│   ├── css/style.css         # Sacred Twilight tema
-│   ├── js/app.js
-│   └── js/api.js
-├── audio/                    # Ezan MP3 dosyalari
-├── data/                     # Namaz vakitleri CSV
-├── config/
-│   ├── config.json           # Yapilandirma (gitignore'da)
-│   └── config.example.json   # Ornek yapilandirma
-├── adhan-player.service      # systemd servis dosyasi
-└── package.json
-```
-
----
-
-## Sorun Giderme
-
-<details>
-<summary><strong>Cihaz bulunamiyor</strong></summary>
-
-- Nest Hub ve cihazinizin ayni agda oldugundan emin olun
-- IP adresini kontrol edin: `npm start -- --discover`
-- Port 3000'in guvenlik duvarindan gectigini dogrulayin
-</details>
-
-<details>
-<summary><strong>Ses calinmiyor</strong></summary>
-
-- `audio/` klasorunde MP3 dosyasinin varligini kontrol edin
-- Nest Hub'in sessize alinmadigini dogrulayin
-- Dashboard'dan "Cihaz Testi" butonuyla bip sesi deneyin
-</details>
-
-<details>
-<summary><strong>Vakitler yuklenmiyor</strong></summary>
-
-- Diyanet API kullaniyorsaniz `diyanetLocationId` degerini kontrol edin
-- CSV kullaniyorsaniz format ornekleriyle karsilastirin
-- Dosya kodlamasinin UTF-8 oldugunu dogrulayin
-</details>
-
----
 
 ## Lisans
 
 MIT
-
----
-
-<p align="center">
-  <sub>Namazlariniz kabul olsun.</sub>
-</p>

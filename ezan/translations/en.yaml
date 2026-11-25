@@ -1,0 +1,65 @@
+configuration:
+  location_id:
+    name: Diyanet location ID
+    description: >-
+      The number in the address after picking your city on
+      namazvakitleri.diyanet.gov.tr. Vienna = 11618.
+  timezone:
+    name: Time zone
+    description: Time zone used for prayer times (e.g. Europe/Vienna).
+  output_mode:
+    name: Output mode
+    description: >-
+      media_player = send the adhan to a Home Assistant media player (Nest Hub,
+      Sonos...). local = play on the Raspberry Pi's own audio output.
+  media_player_entity:
+    name: Media player
+    description: >-
+      Entity to play on when output mode is media_player
+      (e.g. media_player.kitchen_nest_hub).
+  volume:
+    name: Volume
+    description: Between 0.0 and 1.0 (0.5 = 50%).
+  audio_file:
+    name: Adhan file
+    description: File name inside the /media/ezan/ folder (e.g. adhan.mp3).
+  imsak:
+    name: Imsak adhan
+    description: Play at Diyanet's imsak time.
+  sabah:
+    name: Fajr (Sabah) adhan
+    description: Play "Fajr offset" minutes before sunrise.
+  ogle:
+    name: Dhuhr adhan
+    description: Play at dhuhr.
+  ikindi:
+    name: Asr adhan
+    description: Play at asr.
+  aksam:
+    name: Maghrib adhan
+    description: Play at maghrib.
+  yatsi:
+    name: Isha adhan
+    description: Play at isha.
+  fajr_offset:
+    name: Fajr offset (minutes)
+    description: >-
+      How many minutes before sunrise the fajr adhan is played. 0 = at imsak.
+  fajr_audio_file:
+    name: Fajr adhan file
+    description: Separate file for imsak and fajr. Empty = adhan file.
+  fajr_volume:
+    name: Fajr adhan volume
+    description: Separate volume for imsak and fajr (0.0 – 1.0). Empty = main volume.
+  friday_audio_file:
+    name: Friday dhuhr file
+    description: File used for dhuhr on Fridays (optional).
+  friday_volume:
+    name: Friday dhuhr volume
+    description: Volume for dhuhr on Fridays (optional).
+  dua_audio_file:
+    name: Dua file
+    description: Dua played after every adhan (optional).
+  dua_volume:
+    name: Dua volume
+    description: Empty = the volume of that adhan.

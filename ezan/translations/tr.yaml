@@ -1,0 +1,66 @@
+configuration:
+  location_id:
+    name: Diyanet konum kimliği
+    description: >-
+      namazvakitleri.diyanet.gov.tr adresinde şehrinizi seçtiğinizde adreste
+      görünen sayı. Viyana = 11618.
+  timezone:
+    name: Saat dilimi
+    description: Vakitlerin hesaplandığı saat dilimi (ör. Europe/Vienna).
+  output_mode:
+    name: Çıkış modu
+    description: >-
+      media_player = ezanı Home Assistant'taki bir medya oynatıcıya gönder
+      (Nest Hub, Sonos...). local = Raspberry Pi'nin kendi ses çıkışından çal.
+  media_player_entity:
+    name: Medya oynatıcı
+    description: >-
+      Çıkış modu media_player ise ezanın çalınacağı entity
+      (ör. media_player.mutfak_nest_hub).
+  volume:
+    name: Ses seviyesi
+    description: 0.0 – 1.0 arası (0.5 = %50).
+  audio_file:
+    name: Ezan dosyası
+    description: /media/ezan/ klasöründeki dosya adı (ör. adhan.mp3).
+  imsak:
+    name: İmsak ezanı
+    description: Diyanet'in imsak saatinde ezan oku.
+  sabah:
+    name: Sabah ezanı
+    description: Güneş doğuşundan "Sabah ezanı ofseti" kadar önce ezan oku.
+  ogle:
+    name: Öğle ezanı
+    description: Öğle vaktinde ezan oku.
+  ikindi:
+    name: İkindi ezanı
+    description: İkindi vaktinde ezan oku.
+  aksam:
+    name: Akşam ezanı
+    description: Akşam vaktinde ezan oku.
+  yatsi:
+    name: Yatsı ezanı
+    description: Yatsı vaktinde ezan oku.
+  fajr_offset:
+    name: Sabah ezanı ofseti (dakika)
+    description: >-
+      Sabah ezanı güneş doğuşundan kaç dakika önce okunsun. 0 = imsak
+      saatinde oku.
+  fajr_audio_file:
+    name: Sabah ezanı dosyası
+    description: İmsak ve sabah için ayrı dosya. Boşsa ezan dosyası kullanılır.
+  fajr_volume:
+    name: Sabah ezanı ses seviyesi
+    description: İmsak ve sabah için ayrı ses seviyesi (0.0 – 1.0). Boşsa genel ses seviyesi.
+  friday_audio_file:
+    name: Cuma öğle ezanı dosyası
+    description: Cuma günü öğle ezanında kullanılacak dosya (isteğe bağlı).
+  friday_volume:
+    name: Cuma öğle ses seviyesi
+    description: Cuma günü öğle ezanı ses seviyesi (isteğe bağlı).
+  dua_audio_file:
+    name: Ezan duası dosyası
+    description: Her ezandan sonra çalınacak dua (isteğe bağlı).
+  dua_volume:
+    name: Ezan duası ses seviyesi
+    description: Boşsa o ezanın ses seviyesi kullanılır.

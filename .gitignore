@@ -1,18 +1,7 @@
 # Dependencies
 node_modules/
 
-# Audio files (too large for git)
-audio/*.mp3
-audio/*.wav
-audio/*.ogg
-
-# User data (may contain personal information)
-data/prayer-times.csv
-
-# Config with personal settings
-config/config.json
-
-# Logs
+# Local test data
 *.log
 npm-debug.log*
 
@@ -25,11 +14,3 @@ Thumbs.db
 .idea/
 *.swp
 *.swo
-
-# SSL certificates
-certs/
-
-# Runtime
-*.pid
-*.seed
-*.pid.lock

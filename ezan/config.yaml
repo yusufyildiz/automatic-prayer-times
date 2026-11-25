@@ -1,0 +1,55 @@
+name: Ezan Vakitleri
+version: "2.0.0"
+slug: ezan
+description: >-
+  Diyanet namaz vakitlerinde ezanı bir media_player'a veya Pi'nin ses
+  çıkışına çalar; vakitleri MQTT ile sensör olarak açar.
+url: https://github.com/yusufyildiz/automatic-prayer-times
+arch:
+  - aarch64
+  - amd64
+init: false
+startup: application
+boot: auto
+audio: true
+homeassistant_api: true
+services:
+  - mqtt:need
+map:
+  - type: media
+    read_only: false
+watchdog: http://[HOST]:[PORT:8099]/health
+options:
+  location_id: 11618
+  timezone: Europe/Vienna
+  output_mode: media_player
+  media_player_entity: ""
+  volume: 0.5
+  audio_file: adhan.mp3
+  imsak: false
+  sabah: true
+  ogle: true
+  ikindi: true
+  aksam: true
+  yatsi: true
+  fajr_offset: 40
+schema:
+  location_id: int(1,)
+  timezone: str
+  output_mode: list(media_player|local)
+  media_player_entity: str?
+  volume: float(0,1)
+  audio_file: str
+  imsak: bool
+  sabah: bool
+  ogle: bool
+  ikindi: bool
+  aksam: bool
+  yatsi: bool
+  fajr_offset: int(0,120)
+  fajr_audio_file: str?
+  fajr_volume: float(0,1)?
+  friday_audio_file: str?
+  friday_volume: float(0,1)?
+  dua_audio_file: str?
+  dua_volume: float(0,1)?
