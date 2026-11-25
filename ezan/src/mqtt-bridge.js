@@ -87,7 +87,7 @@ export function buildDiscovery(version) {
       avty,
     };
   };
-  sw('sustur', 'Ezan sustur', 'mdi:volume-off');
+  sw('sustur', 'Sustur', 'mdi:volume-off');
   for (const e of EVENTS) {
     sw(`sustur_${SLUGS[e]}`, `${LABELS[e]} ezanını sustur`, 'mdi:volume-mute');
   }
@@ -105,7 +105,7 @@ export function buildDiscovery(version) {
     };
   };
   button('test', 'Hoparlör testi', 'mdi:speaker-play');
-  button('durdur', 'Ezanı durdur', 'mdi:stop');
+  button('durdur', 'Durdur', 'mdi:stop');
 
   return {
     dev: {

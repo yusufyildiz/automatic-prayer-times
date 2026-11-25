@@ -38,10 +38,23 @@ test('sets volume, plays media-source file, waits for end, restores volume', asy
   assert.equal(ha.calls[2][1].volume_level, 0.8);
 });
 
-test('player that was playing other music: start is detected only for our file', async () => {
-  const ha = fakeHa({ initial: 'playing', sequence: ['playing'], contentId: 'spotify:other' });
+test('player that was playing other music: unchanged media is not taken as our start', async () => {
+  const ha = fakeHa({ initial: 'playing', sequence: ['playing'], contentId: 'spotify:x' });
   const out = new MediaPlayerOutput({ entityId: 'media_player.nest', ha, ...fast });
   await assert.rejects(out.play({ file: 'adhan.mp3', volume: 0.5 }), /çalmaya başlamadı/);
+});
+
+test('player that was playing music switches to our file and finishes', async () => {
+  const ha = fakeHa({ initial: 'playing', sequence: ['playing', 'playing', 'paused'], contentId: 'http://ha/media/local/ezan/adhan.mp3' });
+  const out = new MediaPlayerOutput({ entityId: 'media_player.nest', ha, ...fast });
+  await out.play({ file: 'adhan.mp3', volume: 0.5 });
+});
+
+test('idle player that reports a different media_content_id still counts as started (no retry loop)', async () => {
+  const ha = fakeHa({ sequence: ['playing', 'idle'], contentId: 'x-sonos-http:abc123' });
+  const out = new MediaPlayerOutput({ entityId: 'media_player.nest', ha, ...fast });
+  await out.play({ file: 'adhan.mp3', volume: 0.5 });
+  assert.equal(ha.calls.filter((c) => c[0] === 'play_media').length, 1);
 });
 
 test('missing or unavailable entity fails fast', async () => {

@@ -25,10 +25,23 @@ assert.equal(data[0].date, '2026-11-25');
 assert.equal(new DiyanetFetcher({}).parseDateStr('19 Mayıs 2027').toISOString().slice(0, 10), '2027-05-19');
 console.log('parser ok');
 
-// Audio tools for output_mode: local
-const modules = execFileSync('mpg123', ['--list-modules'], { encoding: 'utf-8' });
-assert.match(modules, /pulse/, 'mpg123 pulse output module');
-execFileSync('paplay', ['--version']);
-console.log('mpg123 (pulse) + paplay ok');
+// Audio tools for output_mode: local (mpg123 decodes → pacat/paplay → PulseAudio)
+for (const [cmd, arg] of [['mpg123', '--version'], ['pacat', '--version'], ['paplay', '--version']]) {
+  execFileSync(cmd, [arg], { stdio: 'pipe' });
+}
+console.log('mpg123 + pacat + paplay ok');
+
+// The local pipeline must fail cleanly (no hang) when there is no sound server
+const { LocalOutput } = await import('/app/src/outputs.js');
+const out = new LocalOutput({ mediaDir: '/tmp' });
+const t0 = Date.now();
+await assert.rejects(
+  Promise.race([
+    out.play({ file: 'missing.mp3', volume: 0.5 }),
+    new Promise((_, rej) => setTimeout(() => rej(new Error('TIMEOUT')), 20000)),
+  ]),
+  (e) => e.message !== 'TIMEOUT'
+);
+console.log(`local pipeline error handling ok (${Date.now() - t0} ms)`);
 
 console.log('SMOKE OK');

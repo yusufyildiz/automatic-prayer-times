@@ -50,6 +50,12 @@ test('events already played today are skipped even if still in the future', () =
   s.stop();
 });
 
+test('imsak and sabah at the same minute (fajr_offset 0) fire only once', () => {
+  const s = new PrayerScheduler({ timezone: TZ, prayers: ['imsak', 'fajr', 'dhuhr'], fajrOffset: 0 });
+  assert.deepEqual(s.scheduleTodaysPrayers(times, { now: dayjs.tz('2026-11-25 03:00', TZ) }), ['imsak', 'dhuhr']);
+  s.stop();
+});
+
 test('a day without data clears yesterday\'s jobs', () => {
   const s = new PrayerScheduler({ timezone: TZ, prayers: ['asr'] });
   s.scheduleTodaysPrayers(times, { now: dayjs.tz('2026-11-25 08:00', TZ) });

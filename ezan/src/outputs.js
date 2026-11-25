@@ -64,25 +64,39 @@ export class MediaPlayerOutput {
       media_content_type: MIME[extname(file).toLowerCase()] || 'music',
     });
 
-    // A player that was already playing music reports "playing" before our
-    // file starts, so also check that its current media is our file (when
-    // the integration reports media_content_id at all).
+    // Detecting start/end:
+    // - player was idle → any playing/buffering state is our file
+    // - player was already playing music → wait until the media changes
+    //   (media_content_id contains our file name, or differs from before)
+    // Integrations report media_content_id differently, so the file name
+    // match is only used when it is actually present.
     const name = encodeURIComponent(file.split('/').pop());
+    const contentId = (s) => s.attributes?.media_content_id;
     const isOurs = (s) => {
-      const id = s.attributes?.media_content_id;
-      return typeof id !== 'string' || id.includes(name) || id.includes(file);
+      const id = contentId(s);
+      return typeof id === 'string' && (id.includes(name) || id.includes(file));
     };
     const active = (s) => s.state === 'playing' || s.state === 'buffering';
+    const wasActive = active(before);
+    const previousId = contentId(before);
+    let sawOurs = false;
+
+    const startedCheck = (s) => {
+      if (!active(s)) return false;
+      if (isOurs(s)) sawOurs = true;
+      return sawOurs || !wasActive || contentId(s) !== previousId;
+    };
+    const finishedCheck = (s) => !active(s) || (sawOurs && !isOurs(s));
 
     // Wait for the player to start
-    const started = await this.waitFor((s) => active(s) && isOurs(s), this.startTimeoutMs);
+    const started = await this.waitFor(startedCheck, this.startTimeoutMs);
     if (!started && !this.stopRequested) {
       throw new Error(`${this.entityId} ${Math.round(this.startTimeoutMs / 1000)} sn içinde çalmaya başlamadı`);
     }
 
     // Wait for it to finish
     if (started) {
-      const finished = await this.waitFor((s) => !active(s) || !isOurs(s), this.maxDurationMs);
+      const finished = await this.waitFor(finishedCheck, this.maxDurationMs);
       if (!finished && !this.stopRequested) {
         console.warn(`⚠️  ${this.entityId} hâlâ çalıyor, bitiş beklenmeden devam ediliyor`);
       }
@@ -128,45 +142,87 @@ export class MediaPlayerOutput {
 /**
  * Output "local": play on the Raspberry Pi's own audio output through the
  * Supervisor's PulseAudio (config.yaml `audio: true`).
- * MP3 → mpg123, everything else (wav/ogg/flac) → paplay.
+ *
+ * Alpine's mpg123 has no PulseAudio output module, so MP3 is decoded by
+ * mpg123 to raw PCM (44.1 kHz, stereo, s16le) and piped into pacat.
+ * Other formats (wav/ogg/flac) are played by paplay directly.
  */
 export class LocalOutput {
   constructor({ mediaDir = MEDIA_DIR } = {}) {
     this.mediaDir = mediaDir;
-    this.child = null;
+    this.children = [];
+    this.stopping = false;
     this.describe = 'local (Pi ses çıkışı)';
   }
 
   async check() {
-    return 'ok';
+    return process.env.PULSE_SERVER ? `PulseAudio ${process.env.PULSE_SERVER}` : 'PulseAudio (varsayılan)';
   }
 
   play({ file, volume }) {
     const path = join(this.mediaDir, file);
-    const isMp3 = extname(file).toLowerCase() === '.mp3';
-    const [cmd, args] = isMp3
-      ? ['mpg123', ['-q', '-o', 'pulse', '-f', String(Math.round(volume * 32768)), path]]
-      : ['paplay', ['--volume', String(Math.round(volume * 65536)), path]];
+    this.stopping = false;
 
+    if (extname(file).toLowerCase() !== '.mp3') {
+      return this.run([['paplay', ['--volume', String(Math.round(volume * 65536)), path]]]);
+    }
+    return this.run([
+      ['mpg123', ['-q', '-s', '-r', '44100', '--stereo', '-e', 's16', '-f', String(Math.round(volume * 32768)), path]],
+      ['pacat', ['--playback', '--raw', '--rate=44100', '--channels=2', '--format=s16le', '--client-name=ezan']],
+    ]);
+  }
+
+  /** Run a pipeline of [cmd, args]; resolves when the last process exits 0 */
+  run(pipeline) {
     return new Promise((resolve, reject) => {
-      let stderr = '';
-      const child = spawn(cmd, args, { stdio: ['ignore', 'ignore', 'pipe'] });
-      this.child = child;
-      child.stderr.on('data', (d) => { stderr += d.toString(); });
-      child.on('error', (error) => {
-        this.child = null;
-        reject(new Error(`${cmd} başlatılamadı: ${error.message}`));
-      });
-      child.on('close', (code, signal) => {
-        this.child = null;
-        if (code === 0 || signal === 'SIGTERM') resolve();
-        else reject(new Error(`${cmd} çıkış kodu ${code}: ${stderr.trim().split('\n').slice(-2).join(' ')}`));
+      const errors = [];
+      let pending = pipeline.length;
+      let failed = null;
+      let prev = null;
+
+      const settle = () => {
+        if (--pending > 0) return;
+        this.children = [];
+        if (this.stopping) resolve();
+        else if (failed) reject(failed);
+        else if (errors.length) reject(new Error(errors.join(' | ')));
+        else resolve();
+      };
+
+      this.children = pipeline.map(([cmd, args], i) => {
+        const last = i === pipeline.length - 1;
+        const child = spawn(cmd, args, { stdio: [prev ? 'pipe' : 'ignore', last ? 'ignore' : 'pipe', 'pipe'] });
+        if (prev) {
+          prev.stdout.on('error', () => {});
+          child.stdin.on('error', () => {}); // EPIPE when stopped
+          prev.stdout.pipe(child.stdin);
+        }
+        let stderr = '';
+        let done = false;
+        child.stderr?.on('data', (d) => { stderr += d.toString(); });
+        child.on('error', (error) => {
+          failed ??= new Error(`${cmd} başlatılamadı: ${error.message}`);
+          // the other side of the pipe can't finish on its own
+          for (const c of this.children) if (c !== child) c.kill('SIGTERM');
+          if (!done) { done = true; settle(); }
+        });
+        child.on('close', (code, signal) => {
+          if (done) return;
+          done = true;
+          if (code !== 0 && !signal && !this.stopping) {
+            errors.push(`${cmd} çıkış kodu ${code}: ${stderr.trim().split('\n').slice(-2).join(' ')}`);
+          }
+          settle();
+        });
+        prev = child;
+        return child;
       });
     });
   }
 
   async stop() {
-    if (this.child) this.child.kill('SIGTERM');
+    this.stopping = true;
+    for (const c of this.children) c.kill('SIGTERM');
   }
 }
 

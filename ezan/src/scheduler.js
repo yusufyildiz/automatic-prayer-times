@@ -85,6 +85,7 @@ export class PrayerScheduler {
     const times = computeEventTimes(prayerTimes, this.fajrOffset);
     console.log(`📅 ${dateStr} zamanlaması (şu an ${now.format('HH:mm:ss')}, ${this.timezone}):`);
 
+    const usedTimes = new Map(); // HH:MM → event, so two events never fire in the same minute
     for (const prayer of this.prayers) {
       const effectiveTime = times[prayer];
       const label = LABELS[prayer] || prayer;
@@ -93,6 +94,11 @@ export class PrayerScheduler {
         console.warn(`   ${label.padEnd(7)} vakit bilgisi yok, atlandı`);
         continue;
       }
+      if (usedTimes.has(effectiveTime)) {
+        console.log(`   ${label.padEnd(7)} ${effectiveTime} — ${LABELS[usedTimes.get(effectiveTime)]} ile aynı dakika, tek ezan okunur`);
+        continue;
+      }
+      usedTimes.set(effectiveTime, prayer);
 
       const note = prayer === 'fajr' && effectiveTime !== times.imsak
         ? ` (güneş ${times.sunrise} - ${this.fajrOffset} dk)`
@@ -166,7 +172,7 @@ export class PrayerScheduler {
 }
 
 export function formatDuration(totalMinutes) {
-  const m = Math.max(0, Math.round(totalMinutes));
+  const m = Math.max(0, Math.ceil(totalMinutes));
   const h = Math.floor(m / 60);
   const r = m % 60;
   if (h === 0) return `${r} dk`;

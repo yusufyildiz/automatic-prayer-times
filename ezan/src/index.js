@@ -155,10 +155,17 @@ class EzanApp {
 
     this.startHealthServer();
 
-    await this.refreshTimes({ reason: 'başlangıç' });
+    // Schedule from the cache right away, then fetch (can take a while
+    // without internet) and reschedule only if the fetch changed the data.
     this.scheduleToday();
     this.publishSwitches();
     this.publishLast();
+    const before = JSON.stringify(this.parser.getTodaysPrayerTimes());
+    await this.refreshTimes({ reason: 'başlangıç' });
+    if (JSON.stringify(this.parser.getTodaysPrayerTimes()) !== before) {
+      console.log('🔁 Vakitler güncellendi, zamanlama yenileniyor');
+      this.scheduleToday();
+    }
 
     // 00:01 new day, 03:00 daily Diyanet fetch, every minute: "next" sensors
     const opts = { scheduled: true, timezone: config.timezone };
@@ -506,8 +513,10 @@ class EzanApp {
   health() {
     const today = this.today();
     const mins = this.now().hour() * 60 + this.now().minute();
-    // Liveness: today's schedule must have been built (allow 5 min after midnight)
-    const scheduleOk = this.scheduler?.scheduledDate === today || mins < 5;
+    // Liveness: today's schedule must have been built (grace: 5 min after
+    // midnight and the first 3 min after start)
+    const uptimeMs = Date.now() - this.startedAt;
+    const scheduleOk = this.scheduler?.scheduledDate === today || mins < 5 || uptimeMs < 3 * 60 * 1000;
     return {
       ok: scheduleOk,
       version: VERSION,
